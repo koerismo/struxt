@@ -20,10 +20,12 @@ class JInternalStruct {
 	}
 
 	// Calculate the number of inputs necessary to pass to this struct to fill it in
-	calculate_parameter_length(): number {
+	calculate_unpacked_length(): number {
+		if ( this.type === StructTypes.ARRAY ) { return this.size }
+
 		let sum = 0;
 		for ( let tok of this.struct ) {
-			if ( tok instanceof JInternalStruct ) { sum += tok.calculate_parameter_length(); continue }
+			if ( tok instanceof JInternalStruct ) { sum += tok.calculate_unpacked_length(); continue }
 			if ( tok.constructor.conjoined )	{ sum += 1 }
 			else								{ sum += tok.size }
 		}
@@ -31,16 +33,18 @@ class JInternalStruct {
 	}
 
 	// Calculate the length of this struct's data when packed, in bytes.
-	calculate_length(): number {
+	calculate_packed_length(): number {
+
 		let sum = 0;
 		for ( let tok of this.struct ) {
-			if ( tok instanceof JInternalStruct ) { sum += tok.calculate_length() }
+			if ( tok instanceof JInternalStruct ) { sum += tok.calculate_packed_length() }
 			else { sum += tok.size * tok.constructor.bytes }
 		}
 
 		return this.size * sum;
 	}
 
+	// Print a debug string of this struct's contents
 	print() {
 		let out = `(${this.size}x) Struct`;
 		for ( let tok of this.struct ) {
@@ -50,17 +54,130 @@ class JInternalStruct {
 		return out;
 	}
 
-	pack( data: Array<any> ): Uint8Array {
-		const out = new Uint8Array( this.calculate_length() );
-		let pointer = 0;
+	pack_old( data: Array<any>, little: boolean = false ): Uint8Array {
+
+		const in_length = this.calculate_unpacked_length();
+		if ( data.length !== in_length ) {throw(`Expected array of length ${in_length}, received ${data.length}!`)}
+
+		let pointer_in = 0;
+		let pointer_out = 0;
+		const out = new Uint8Array( this.calculate_packed_length() );
+
 		for ( let tok of this.struct ) {
-			//const chunk = tok.pack()
+			if ( tok instanceof JInternalStruct ) {
+				continue;
+			}
+
+			const token_size_in = tok.constructor.conjoined ? 1 : tok.size;
+			const data_slice = data.slice( pointer_in, pointer_in + token_size_in );
+
+			if (tok.constructor.conjoined && data_slice[0].length !== tok.size ) {
+				throw(`Conjoined token expected entry of length ${tok.size}, but received length ${data_slice[0].length}!`);
+			}
+
+			const out_chunk = tok.pack( data_slice, little );
+			for ( let i=0; i<out_chunk.length; i++ ) { out[i+pointer_out] = out_chunk[i] }
+
+			pointer_in += token_size_in;
+			pointer_out += tok.size * tok.constructor.bytes;
 		}
+		
 		return out;
 	}
 
-	unpack( data: Uint8Array ): Array<any> {
-		return new Array();
+	// Transform an array of inputs into packed data.
+	pack( data: Array<any>, little: boolean = false ): Uint8Array {
+		const length_in  = this.calculate_unpacked_length();
+		const length_out = this.calculate_packed_length();
+		if (data.length !== length_in) {throw(`Expected array of length ${length_in}, but received ${data.length}!`)}
+		const output = new Uint8Array(length_out);
+
+		let pointer_in  = 0;
+		let pointer_out = 0;
+		for ( let token of this.struct ) {
+			if ( token instanceof JInternalStruct ) {
+
+
+
+			} else {
+
+				if ( token.constructor.conjoined ) {
+					const token_data = data[pointer];
+					const chunk = token.unpack( token_data, little );
+					pointer ++;
+				}
+
+			}
+		}
+	}
+
+	// Transform packed data into an array of outputs
+	unpack( data: Uint8Array, little: boolean = false ): Array<any> {
+
+		const length_in  = this.calculate_packed_length();
+		const length_out = this.calculate_unpacked_length();
+		if ( data.length !== length_in ) {throw(`Expected array of length ${length_in}, but received ${data.length}!`)}
+		const self_is_array = this.type === StructTypes.ARRAY;
+
+		const unified_length = self_is_array ? this.size : length_out;
+		const unified = new Array( unified_length );
+		let pointer_unified = 0;
+
+		let pointer_in = 0;
+		for ( let l=0; l<this.size; l++ ) {
+
+			const output = new Array( Math.round(length_out / this.size) ); 
+			let pointer_out = 0;
+
+			for ( let token_id=0; token_id<this.struct.length; token_id++ ) {
+				const token = this.struct[token_id];
+				if ( token instanceof JInternalStruct ) {
+
+					const consumes = token.calculate_packed_length();
+					const token_data = data.slice( pointer_in, pointer_in+consumes );
+					pointer_in += consumes;
+
+					const token_return = token.unpack( token_data, little );
+					const token_is_array = token.type === StructTypes.ARRAY;
+
+					for ( let i=0; i<token_return.length; i++ ) { output[pointer_out+i] = token_return[i] }
+					pointer_out += token_return.length;
+
+				}
+				else {
+
+					const consumes = token.size * token.constructor.bytes;
+					const token_data = data.slice( pointer_in, pointer_in+consumes );
+					pointer_in += consumes;
+
+					const token_return = token.unpack( token_data, little );
+
+					if ( token.constructor.conjoined ) {
+						output[pointer_out] = token_return;
+						pointer_out += 1;
+					}
+					else {
+						for ( let i=0; i<token_return.length; i++ ) { output[pointer_out+i] = token_return[i] }
+						pointer_out += token_return.length;
+					}
+
+				}
+			}
+
+			if ( self_is_array ) {
+				unified[pointer_unified] = output;
+				pointer_unified += 1;
+			}
+			else {
+				for ( let i=0; i<output.length; i++ ) { unified[pointer_unified+i] = output[i] }
+				pointer_unified += output.length;
+			}
+			
+		}
+
+		// Should return [[set1][set2][set3]] if array, otherwise
+		// should return [set1set2set3]
+		return unified;
 	}
 }
 
