@@ -124,7 +124,7 @@ export const JTokenList = {
 
 
 	/* Float */
-	q: class extends JToken {
+	f: class extends JToken {
 		static bytes = 4;
 
 		unpack( data: Uint8Array ): Float32Array {

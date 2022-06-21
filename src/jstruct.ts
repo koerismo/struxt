@@ -92,7 +92,7 @@ class JInternalStruct {
 
 		const output = new Uint8Array(length_out);
 		function push( arr: Uint8Array ) {
-			if ( pointer_out + arr.length >= length_out ) {throw( `Reached output boundary at ${length_out}! Attempted to write at ${pointer_out+arr.length}` )}
+			if ( pointer_out + arr.length > length_out ) {throw( `Reached output boundary at ${length_out}! Attempted to write at ${pointer_out+arr.length}` )}
 			for (let i=0; i<arr.length; i++ ) { output[pointer_out+i] = arr[i] }
 			pointer_out += arr.length;
 		}
