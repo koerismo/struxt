@@ -1,6 +1,5 @@
 import { JToken, JTokenList } from './jstruct_tokens.js';
 
-
 /* JInternalStruct: A class to handle sub-structs and struct groups. Do not create manually! */
 class JInternalStruct {
 
@@ -88,28 +87,61 @@ class JInternalStruct {
 
 		const length_in  = this.calculate_unpacked_length();
 		const length_out = this.calculate_packed_length();
-		if (data.length !== length_in) {throw(`Expected array of length ${length_in}, but received ${data.length}!`)}
+		if (data.length !== length_in) {throw( `Expected array of length ${length_in}, but received ${data.length}!` )}
 		const self_is_array = this.type === JStruct.ARRAY;
 
 		const output = new Uint8Array(length_out);
+		function push( arr: Uint8Array ) {
+			if ( pointer_out + arr.length >= length_out ) {throw( `Reached output boundary at ${length_out}! Attempted to write at ${pointer_out+arr.length}` )}
+			for (let i=0; i<arr.length; i++ ) { output[pointer_out+i] = arr[i] }
+			pointer_out += arr.length;
+		}
 
 		let pointer_in  = 0;
 		let pointer_out = 0;
-		for ( let token of this.struct ) {
-			if ( token instanceof JInternalStruct ) {
 
+		// Consume data for each "copy" of this substruct.
+		// If it is an array-type substruct, unpacked data will be provided as an array of arrays.
+		let subdata = data;
+		for ( let l=0; l<this.size; l++ ) {
+			if ( self_is_array ) { subdata = data[l]; pointer_in = 0 }
 
+			for ( let token of this.struct ) {
+				if ( token instanceof JInternalStruct ) {
 
-			} else {
+					if ( token.type === JStruct.ARRAY ) {
+						const token_data = subdata.slice( pointer_in, pointer_in+token.size );
+						const chunk = token.pack( token_data );
+						pointer_in += token.size;
+						push( chunk );
+					}
+					else {
+						const token_data = subdata.slice( pointer_in, pointer_in+token.calculate_unpacked_length() );
+						const chunk = token.pack( token_data );
+						pointer_in += token.size;
+						push( chunk );
+					}
 
-				if ( token.constructor.conjoined ) {
-					const token_data = data[pointer];
-					const chunk = token.unpack( token_data );
-					pointer ++;
+				} else {
+
+					if ( token.constructor.conjoined ) {
+						const token_data = subdata[pointer_in];
+						const chunk = token.pack( token_data );
+						pointer_in ++;
+						push( chunk );
+					}
+					else {
+						const token_data = subdata.slice( pointer_in, pointer_in+token.size );
+						const chunk = token.pack( token_data );
+						pointer_in += token.size;
+						push( chunk );
+					}
+
 				}
-
 			}
 		}
+
+		return output;
 	}
 
 	// Transform packed data into an array of outputs
@@ -175,8 +207,6 @@ class JInternalStruct {
 			
 		}
 
-		// Should return [[set1][set2][set3]] if array, otherwise
-		// should return [set1set2set3]
 		return unified;
 	}
 }
