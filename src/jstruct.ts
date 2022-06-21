@@ -1,27 +1,25 @@
 import { JToken, JTokenList } from './jstruct_tokens.js';
 
-export const StructTypes = {
-	GROUP:	0,
-	ARRAY:	1,
-}
-
 
 /* JInternalStruct: A class to handle sub-structs and struct groups. Do not create manually! */
 class JInternalStruct {
 
 	size: number = 1;
-	type: number = StructTypes.GROUP;
+	type: number = JStruct.GROUP;
+	order: boolean = JStruct.BIG;
+
 	struct: Array<JToken|JInternalStruct> = [];
 	parent: JStruct|JInternalStruct|null;
-	constructor( size: number, parent: JStruct|JInternalStruct|null, type: number ) {
+	constructor( size: number, parent: JStruct|JInternalStruct|null, type: number, little: boolean ) {
 		this.size = size;
 		this.type = type;
+		this.order = little;
 		this.parent = parent;
 	}
 
 	// Calculate the number of inputs necessary to pass to this struct to fill it in
 	calculate_unpacked_length(): number {
-		if ( this.type === StructTypes.ARRAY ) { return this.size }
+		if ( this.type === JStruct.ARRAY ) { return this.size }
 
 		let sum = 0;
 		for ( let tok of this.struct ) {
@@ -86,10 +84,13 @@ class JInternalStruct {
 	}
 
 	// Transform an array of inputs into packed data.
-	pack( data: Array<any>, little: boolean = false ): Uint8Array {
+	pack( data: Array<any> ): Uint8Array {
+
 		const length_in  = this.calculate_unpacked_length();
 		const length_out = this.calculate_packed_length();
 		if (data.length !== length_in) {throw(`Expected array of length ${length_in}, but received ${data.length}!`)}
+		const self_is_array = this.type === JStruct.ARRAY;
+
 		const output = new Uint8Array(length_out);
 
 		let pointer_in  = 0;
@@ -103,7 +104,7 @@ class JInternalStruct {
 
 				if ( token.constructor.conjoined ) {
 					const token_data = data[pointer];
-					const chunk = token.unpack( token_data, little );
+					const chunk = token.unpack( token_data );
 					pointer ++;
 				}
 
@@ -112,12 +113,12 @@ class JInternalStruct {
 	}
 
 	// Transform packed data into an array of outputs
-	unpack( data: Uint8Array, little: boolean = false ): Array<any> {
+	unpack( data: Uint8Array ): Array<any> {
 
 		const length_in  = this.calculate_packed_length();
 		const length_out = this.calculate_unpacked_length();
 		if ( data.length !== length_in ) {throw(`Expected array of length ${length_in}, but received ${data.length}!`)}
-		const self_is_array = this.type === StructTypes.ARRAY;
+		const self_is_array = this.type === JStruct.ARRAY;
 
 		const unified_length = self_is_array ? this.size : length_out;
 		const unified = new Array( unified_length );
@@ -129,16 +130,15 @@ class JInternalStruct {
 			const output = new Array( Math.round(length_out / this.size) ); 
 			let pointer_out = 0;
 
-			for ( let token_id=0; token_id<this.struct.length; token_id++ ) {
-				const token = this.struct[token_id];
+			for ( let token of this.struct ) {
 				if ( token instanceof JInternalStruct ) {
 
 					const consumes = token.calculate_packed_length();
 					const token_data = data.slice( pointer_in, pointer_in+consumes );
 					pointer_in += consumes;
 
-					const token_return = token.unpack( token_data, little );
-					const token_is_array = token.type === StructTypes.ARRAY;
+					const token_return = token.unpack( token_data );
+					const token_is_array = token.type === JStruct.ARRAY;
 
 					for ( let i=0; i<token_return.length; i++ ) { output[pointer_out+i] = token_return[i] }
 					pointer_out += token_return.length;
@@ -150,7 +150,7 @@ class JInternalStruct {
 					const token_data = data.slice( pointer_in, pointer_in+consumes );
 					pointer_in += consumes;
 
-					const token_return = token.unpack( token_data, little );
+					const token_return = token.unpack( token_data );
 
 					if ( token.constructor.conjoined ) {
 						output[pointer_out] = token_return;
@@ -184,12 +184,19 @@ class JInternalStruct {
 /* JStruct: A class to handle structs. */
 export class JStruct extends JInternalStruct {
 
+	static GROUP	= 0;
+	static ARRAY	= 1;
+
+	static LITTLE	= true;
+	static BIG		= false;
+
 	constructor( struct: string ) {
-		super( 1, null, StructTypes.GROUP );
+		super( 1, null, JStruct.GROUP, JStruct.BIG );
 
 		const arr = struct.split('');
 		let active_size: number|null = null;
 		let active_struct: JStruct|JInternalStruct = this;
+		let active_order: boolean = this.order;
 
 		for (let tok of arr) {
 
@@ -207,10 +214,10 @@ export class JStruct extends JInternalStruct {
 			// Enter substruct
 			if ( tok === '(' || tok === '[' ) {
 				const token_size	= active_size === null ? 1 : active_size;
-				const bracket_type	= tok === '(' ? StructTypes.GROUP : StructTypes.ARRAY;
+				const bracket_type	= tok === '(' ? JStruct.GROUP : JStruct.ARRAY;
 				const parent_struct	= active_struct;
 
-				active_struct = new JInternalStruct( token_size, parent_struct, bracket_type );
+				active_struct = new JInternalStruct( token_size, parent_struct, bracket_type, active_order );
 				parent_struct.struct.push( active_struct );
 				active_size = null;
 				continue;
@@ -220,17 +227,21 @@ export class JStruct extends JInternalStruct {
 			if ( tok === ')' || tok === ']' ) {
 				if ( active_struct.parent === null ) { throw('ParseError: Encountered extra end bracket!') }
 
-				const bracket_type = tok === ')' ? StructTypes.GROUP : StructTypes.ARRAY;
+				const bracket_type = tok === ')' ? JStruct.GROUP : JStruct.ARRAY;
 				if ( bracket_type !== active_struct.type ) { throw(`ParseError: Encountered non-matching bracket ${tok}`) }
 				
 				active_struct = active_struct.parent;
 				continue;
 			}
 
+			// Set endianness
+			if ( tok === '<' ) { active_order = JStruct.LITTLE;	continue }
+			if ( tok === '>' ) { active_order = JStruct.BIG;	continue }
+
 			// Create single token
 			if ( tok in JTokenList ) {
 				const token_size = active_size === null ? 1 : active_size;
-				active_struct.struct.push( new (JTokenList[tok])(token_size) );
+				active_struct.struct.push( new (JTokenList[tok])(token_size, active_order) );
 				active_size = null;
 				continue;
 			}
