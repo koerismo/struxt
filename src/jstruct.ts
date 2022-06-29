@@ -115,7 +115,7 @@ class JInternalStruct {
 
 	// Transform packed data into an array of outputs
 	unpack( data: Uint8Array ): Array<any> {
-		
+
 		if (!(data instanceof Uint8Array)) {throw( `Expected Uint8Array, received ${data.constructor.name}!` )}
 
 		const length_in  = this.calculate_packed_length();
@@ -238,6 +238,9 @@ export class JStruct extends JInternalStruct {
 			// Set endianness
 			if ( tok === '<' ) { active_order = JStruct.LITTLE;	continue }
 			if ( tok === '>' ) { active_order = JStruct.BIG;	continue }
+
+			// Ignore space characters
+			if ( tok === ' ' ) { continue; }
 
 			// Create single token
 			if ( tok in JTokenList ) {
