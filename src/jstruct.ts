@@ -239,11 +239,9 @@ export class JStruct extends JInternalStruct {
 			if ( tok === '<' ) { active_order = JStruct.LITTLE;	continue }
 			if ( tok === '>' ) { active_order = JStruct.BIG;	continue }
 
-			// Ignore space characters
-			if ( tok === ' ' ) { continue; }
-
 			// Create single token
 			if ( tok in JTokenList ) {
+				if ( JTokenList[tok] === null ) { continue; }
 				const token_size = active_size === null ? 1 : active_size;
 				active_struct.struct.push( new (JTokenList[tok])(token_size, active_order) );
 				active_size = null;

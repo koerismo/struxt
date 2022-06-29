@@ -19,6 +19,11 @@ export class JToken {
 
 export const JTokenList = {
 
+	/* Legal Ignored Characters */
+	' ':	null,
+	'\n':	null,
+	'\t':	null,
+
 	/* Char */
 	c: class extends JToken {
 		static bytes = 1;
