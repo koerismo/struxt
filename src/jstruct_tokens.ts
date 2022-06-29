@@ -108,14 +108,14 @@ export const JTokenList = {
 	I: class extends JToken {
 		static bytes = 4;
 
-		unpack( data: Uint8Array ): Int32Array {
+		unpack( data: Uint8Array ): Uint32Array {
 			const view	= new DataView( data.buffer );
-			const out	= new Int32Array( data.length / 4 );
+			const out	= new Uint32Array( data.length / 4 );
 			for ( let u in out ) { out[u] = view.getUint32(u * 4, this.order) }
 			return out;
 		};
 		
-		pack( data: Int32Array ) {
+		pack( data: Uint32Array ) {
 			const view	= new DataView(new ArrayBuffer( data.length * 4 ));
 			for ( let u in data ) { view.setUint32(u * 4, data[u], this.order) }
 			return new Uint8Array( view.buffer );
@@ -154,4 +154,18 @@ export const JTokenList = {
 			return new TextEncoder().encode( data );
 		}
 	},
+
+	/* Boolean */
+	'?': class extends JToken {
+		static bytes = 1;
+
+		unpack( data: Uint8Array ): Array<boolean> {
+			const out = new Array( data.length );
+			for ( let i in data ) { out[i] = (data[i] !== 0) }
+			return out;
+		}
+		pack( data: Array<boolean> ): Uint8Array {
+			return new Uint8Array( data );
+		}
+	}
 }

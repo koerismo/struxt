@@ -51,37 +51,6 @@ class JInternalStruct {
 		return out;
 	}
 
-	pack_old( data: Array<any>, little: boolean = false ): Uint8Array {
-
-		const in_length = this.calculate_unpacked_length();
-		if ( data.length !== in_length ) {throw(`Expected array of length ${in_length}, received ${data.length}!`)}
-
-		let pointer_in = 0;
-		let pointer_out = 0;
-		const out = new Uint8Array( this.calculate_packed_length() );
-
-		for ( let tok of this.struct ) {
-			if ( tok instanceof JInternalStruct ) {
-				continue;
-			}
-
-			const token_size_in = tok.constructor.conjoined ? 1 : tok.size;
-			const data_slice = data.slice( pointer_in, pointer_in + token_size_in );
-
-			if (tok.constructor.conjoined && data_slice[0].length !== tok.size ) {
-				throw(`Conjoined token expected entry of length ${tok.size}, but received length ${data_slice[0].length}!`);
-			}
-
-			const out_chunk = tok.pack( data_slice, little );
-			for ( let i=0; i<out_chunk.length; i++ ) { out[i+pointer_out] = out_chunk[i] }
-
-			pointer_in += token_size_in;
-			pointer_out += tok.size * tok.constructor.bytes;
-		}
-		
-		return out;
-	}
-
 	// Transform an array of inputs into packed data.
 	pack( data: Array<any> ): Uint8Array {
 
@@ -146,10 +115,12 @@ class JInternalStruct {
 
 	// Transform packed data into an array of outputs
 	unpack( data: Uint8Array ): Array<any> {
+		
+		if (!(data instanceof Uint8Array)) {throw( `Expected Uint8Array, received ${data.constructor.name}!` )}
 
 		const length_in  = this.calculate_packed_length();
 		const length_out = this.calculate_unpacked_length();
-		if ( data.length !== length_in ) {throw(`Expected array of length ${length_in}, but received ${data.length}!`)}
+		if ( data.length !== length_in ) {throw( `Expected array of length ${length_in}, but received ${data.length}!` )}
 		const self_is_array = this.type === JStruct.ARRAY;
 
 		const unified_length = self_is_array ? this.size : length_out;
