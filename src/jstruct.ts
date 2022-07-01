@@ -191,15 +191,33 @@ export class JStruct extends JInternalStruct {
 	static LITTLE	= true;
 	static BIG		= false;
 
-	constructor( struct: string ) {
+	constructor( struct: string, variables: object = {} ) {
 		super( 1, null, JStruct.GROUP, JStruct.BIG );
 
 		const arr = struct.split('');
 		let active_size: number|null = null;
 		let active_struct: JStruct|JInternalStruct = this;
 		let active_order: boolean = this.order;
+		let active_variable: string|null = null;
 
 		for (let tok of arr) {
+
+			// Enter variable
+			if ( tok === '{' ) { active_variable = ''; continue }
+
+			// Exit variable
+			if ( tok === '}' ) {
+				if ( active_variable === null )							{throw( 'ParseError: Encountered extra end bracket!' )}
+				if (!( active_variable in variables ))					{throw( `ParseError: Attempted to insert nonexistent substruct ${active_variable}` )}
+				if (!( variables[active_variable] instanceof JStruct ))	{throw( 'ParseError: Substructs must be instances of JStruct!' )}
+				for ( let subtoken of variables[active_variable].struct ) { active_struct.struct.push(subtoken) }
+				active_variable = null;
+				continue;
+			}
+
+			// Add token to variable
+			if ( active_variable !== null ) { active_variable += tok; continue }
+
 
 			// Count size
 			if ( '0123456789'.includes(tok) ) {
@@ -249,7 +267,7 @@ export class JStruct extends JInternalStruct {
 			}
 
 			// If none of the above match, character must be illegal.
-			throw(`ParseError: Unrecognized token ${tok}`);
+			throw(`ParseError: Unrecognized token "${tok}"`);
 		}
 	}
 
