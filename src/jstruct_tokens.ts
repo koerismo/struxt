@@ -156,6 +156,7 @@ export const JTokenList = {
 			return new TextDecoder().decode( data.buffer );
 		}
 		pack( data: string ): Uint8Array {
+			if ( data.length > this.size ) {throw( `Expected string of at most length ${this.size}, but received ${data.length}` )}
 			return new TextEncoder().encode( data );
 		}
 	},

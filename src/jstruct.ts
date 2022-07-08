@@ -210,7 +210,13 @@ export class JStruct extends JInternalStruct {
 				if ( active_variable === null )							{throw( 'ParseError: Encountered extra end bracket!' )}
 				if (!( active_variable in variables ))					{throw( `ParseError: Attempted to insert nonexistent substruct ${active_variable}` )}
 				if (!( variables[active_variable] instanceof JStruct ))	{throw( 'ParseError: Substructs must be instances of JStruct!' )}
-				for ( let subtoken of variables[active_variable].struct ) { active_struct.struct.push(subtoken) }
+
+				const token_size	= active_size === null ? 1 : active_size;
+				const substruct = new JInternalStruct( token_size, active_struct, JStruct.GROUP, active_order );
+
+				for ( let subtoken of variables[active_variable].struct ) { substruct.struct.push(subtoken) }
+				active_struct.struct.push( substruct );
+				
 				active_variable = null;
 				continue;
 			}
