@@ -193,7 +193,7 @@ export const JTokenList = {
 		static bytes = 1;
 		static only_unpacked = true;
 
-		unpack( data: Uint8Array ): Array<null> {
+		unpack( data: null ): Array<null> {
 			return new Array( this.size ).fill( null )
 		}
 	}
