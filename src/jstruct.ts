@@ -23,6 +23,7 @@ class JInternalStruct {
 		let sum = 0;
 		for ( let tok of this.struct ) {
 			if ( tok instanceof JInternalStruct ) { sum += tok.calculate_unpacked_length(); continue }
+			if ( tok.constructor.only_packed )	{ continue }
 			if ( tok.constructor.conjoined )	{ sum += 1 }
 			else								{ sum += tok.size }
 		}
@@ -35,7 +36,7 @@ class JInternalStruct {
 		let sum = 0;
 		for ( let tok of this.struct ) {
 			if ( tok instanceof JInternalStruct ) { sum += tok.calculate_packed_length() }
-			else { sum += tok.size * tok.constructor.bytes }
+			else { sum += tok.size * tok.constructor.bytes * !tok.constructor.only_unpacked }
 		}
 
 		return this.size * sum;
@@ -93,6 +94,16 @@ class JInternalStruct {
 
 				} else {
 
+					if ( token.constructor.only_unpacked ) {
+						pointer_in += token.size;
+						continue;
+					}
+
+					if ( token.constructor.only_packed ) {
+						push( token.pack(null) );
+						continue;
+					}
+
 					if ( token.constructor.conjoined ) {
 						const token_data = subdata[pointer_in];
 						const chunk = token.pack( token_data );
@@ -148,6 +159,18 @@ class JInternalStruct {
 
 				}
 				else {
+
+					if ( token.constructor.only_unpacked ) {
+						const token_return = token.unpack( null );
+						for ( let i=0; i<token_return.length; i++ ) { output[pointer_out+i] = token_return[i] }
+						pointer_out += token_return.length;
+						continue;
+					}
+
+					if ( token.constructor.only_packed ) {
+						pointer_in += token.size * token.constructor.bytes;
+						continue;
+					}
 
 					const consumes = token.size * token.constructor.bytes;
 					const token_data = data.slice( pointer_in, pointer_in+consumes );

@@ -4,15 +4,18 @@ export class JToken {
 	static conjoined: boolean = false;	// Override size and always consume a single slot when packing
 	static bytes: number;				// The size of a single token in bytes
 
+	static only_packed   = false;		// Always take up zero slots of unpacked data
+	static only_unpacked = false;		// Always take up zero bytes of packed data
+
 	size: number;
 	order: boolean;
 	constructor( size: number, order: boolean ) {
-		this.size = size;
+		this.size  = size;
 		this.order = order;
 	}
 
-	unpack( data: Uint8Array ): any { return }
-	pack( data: any ): Uint8Array { return new Uint8Array() }
+	unpack( data: Uint8Array|null ): any { return }
+	pack( data: any|null ): Uint8Array { return new Uint8Array() }
 
 	print() { return `(${this.size}x) ${this.constructor.name}` }
 }
@@ -172,6 +175,26 @@ export const JTokenList = {
 		}
 		pack( data: Array<boolean> ): Uint8Array {
 			return new Uint8Array( data );
+		}
+	},
+
+	/* Padding */
+	x: class extends JToken {
+		static bytes = 1;
+		static only_packed = true;
+
+		pack( data: null ): Uint8Array {
+			return new Uint8Array( this.size )
+		}
+	},
+
+	/* Null */
+	X: class extends JToken {
+		static bytes = 1;
+		static only_unpacked = true;
+
+		unpack( data: Uint8Array ): Array<null> {
+			return new Array( this.size ).fill( null )
 		}
 	}
 }

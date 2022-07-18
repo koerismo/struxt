@@ -33,3 +33,6 @@
 // s: char					(1)
 
 // ?: bool					(1)
+
+// x: padding				(1) - Note: Present in packed data, but does not unpack.
+// X: null					(0) - Note: Present in unpacked data, but does not pack.
