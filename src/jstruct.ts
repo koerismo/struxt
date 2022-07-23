@@ -3,6 +3,11 @@ import { JToken, JTokenList } from './jstruct_tokens.js';
 /* JInternalStruct: A class to handle sub-structs and struct groups. Do not create manually! */
 class JInternalStruct {
 
+	#cache = {
+		unpacked_length: null,
+		packed_length: null,
+	};
+
 	size: number = 1;
 	type: number = JStruct.GROUP;
 	order: boolean = JStruct.BIG;
@@ -18,6 +23,7 @@ class JInternalStruct {
 
 	// Calculate the number of inputs necessary to pass to this struct to fill it in
 	calculate_unpacked_length(): number {
+		if ( this.#cache.unpacked_length ) { return this.#cache.unpacked_length }
 		if ( this.type === JStruct.ARRAY ) { return this.size }
 
 		let sum = 0;
@@ -27,11 +33,14 @@ class JInternalStruct {
 			if ( tok.constructor.conjoined )	{ sum += 1 }
 			else								{ sum += tok.size }
 		}
+
+		this.#cache.unpacked_length = sum * this.size;
 		return sum * this.size;
 	}
 
 	// Calculate the length of this struct's data when packed, in bytes.
 	calculate_packed_length(): number {
+		if ( this.#cache.packed_length ) { return this.#cache.packed_length }
 
 		let sum = 0;
 		for ( let tok of this.struct ) {
@@ -39,6 +48,7 @@ class JInternalStruct {
 			else { sum += tok.size * tok.constructor.bytes * !tok.constructor.only_unpacked }
 		}
 
+		this.#cache.packed_length = this.size * sum;
 		return this.size * sum;
 	}
 
@@ -124,6 +134,23 @@ class JInternalStruct {
 		return output;
 	}
 
+	// Transform any number of arrays of inputs into packed data.
+	// TODO: This could be more performant.
+	pack_iter( data: Array<Array<any>> ): Uint8Array {
+		const length_single = this.calculate_packed_length();
+		const out_length = data.length * length_single;
+		const out = new Uint8Array( out_length );
+
+		let pointer = 0;
+		for ( let i=0; i<data.length; i++ ) {
+			const chunk = this.pack( data[i] );
+			for ( let byte=0; byte<length_single; byte++ ) { out[pointer+byte] = chunk[byte] }
+			pointer += length_single;
+		}
+
+		return out;
+	}
+
 	// Transform packed data into an array of outputs
 	unpack( data: Uint8Array ): Array<any> {
 
@@ -202,6 +229,25 @@ class JInternalStruct {
 		}
 
 		return unified;
+	}
+
+	// Transform all available packed data into an array of unpacked output arrays.
+	// TODO: This could be more performant.
+	unpack_iter( data: Uint8Array ): Array<Array<any>> {
+		const length_single = this.calculate_packed_length();
+		const entry_count = data.length / length_single;
+		if (entry_count%1 !== 0) {throw( `Expected array with length divisible by ${length_single}, but received ${data.length}!` )}
+		const out = new Array(entry_count);
+
+		for ( let i=0; i<entry_count; i++ ) {
+			out[i] = this.unpack(data.slice( i*length_single, (i+1)*length_single ));
+		}
+
+		return out;
+	}
+
+	clear_cache() {
+		for ( let x in this.#cache ) { this.#cache[x] = null }
 	}
 }
 
