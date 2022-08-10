@@ -10,7 +10,7 @@ A structure features two component types: Tokens and groups. The latter is where
 **Groups** allow you to group tokens together. A group consists of a series of tokens and a length. These attributes are defined in the structure by a number and a series of tokens surrounded by brackets. struct.ts features two types of groups: sticky groups and separating groups. The primary difference between the two is that sticky groups take a single slot to pack and unpack, that single slot being an array of the collapsed values. Sticky groups are defined in the structure with square brackets `[]`, whereas separating groups are defined with round brackets `()`.
 
 ## Replacements
-struct.ts also allows structs to have other structs defined within the structure. Replacements are evaluated during structure object construction, meaning that their contents are copied into a new group inside the struct. They can be defiend by inserting a name in *fancy* brackets `{}`, and inserting an entry with a matching name into a dict, which must be supplied to the constructor as an additional argument.
+struct.ts also allows structs to have other structs defined within the structure. Replacements are evaluated during structure object construction, meaning that their contents are copied into a new group inside the struct. They can be defined by inserting a name in *fancy* brackets `{}`, and inserting an entry with a matching name into a dict, which must be supplied to the constructor as an additional argument.
 
 # Examples
 ```ts
