@@ -66,7 +66,7 @@ const TEncoder = new TextEncoder();
 const TDecoder = new TextDecoder();
 
 
-/** This constant reports the current system's endianness. If true, the system is big-endian. This is used to perform various shortcuts in packing and unpacking. */
+/** This constant reports the current system's endianness. If true, the system is little-endian. This is used to perform various shortcuts in packing and unpacking. */
 export const system_endianness = (new Uint8Array(new Uint16Array([255]).buffer)[0] === 255);
 export const BIG_ENDIAN = false,
              LITTLE_ENDIAN = true;
