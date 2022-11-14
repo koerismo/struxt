@@ -16,18 +16,8 @@ export class Construct {
 	parts: Part[];
 	map: Object;
 
-	#mode: 0|1|2		= MODE_NONE;
-	#dir:  Object|null	= null;
-
 	constructor( parts: Part[]=[] ) {
 		this.parts = parts;
-		this.map   = {};
-		for ( let i=0; i<this.parts.length; i++ ) this.map[this.parts[i].name] = this.parts[i];
-	}
-
-	eval( name: string ) {
-		if ( this.#mode === MODE_NONE || !this.#dir ) throw( 'Eval can only be used within pack/unpack calls!' );
-		return this.#dir[name];
 	}
 
 	pack( data: Object ) {

@@ -74,13 +74,11 @@ export const BIG_ENDIAN = false,
 
 
 export function Pack( type:int, data:ArrayLike<number>|any|null, size:int, endianness:boolean ): Uint8Array {
-	console.log('PACK CALL:', type, 'from', data, 'with size', size);
 	if (size === SINGLE) return _Pack( type, [data], 1, endianness );
 	else return _Pack( type, data, size, endianness );
 }
 
 export function Unpack( type:int, data:Uint8Array, size:int, endianness:boolean ): ArrayLike<number>|any|null {
-	console.log('UNPACK CALL:', type, 'from', data, 'with size', size);
 	if (size === SINGLE) return _Unpack( type, data, 1, endianness )[0];
 	else return _Unpack( type, data, size, endianness );
 }

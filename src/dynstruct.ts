@@ -81,7 +81,7 @@ export class Struct {
 		const bits: Uint8Array[] = [];
 		for ( let i=0; i<this.#parts.length; i++ ) {
 			const part = this.#parts[i];
-			const part_rawsize = this.#ask(part.size);
+			const part_rawsize = this.#askint(part.size);
 			const part_size = (part_rawsize === SINGLE) ? 1 : part_rawsize;
 
 			if (!( part.name in data )) throw(`Parameter ${part.name} is missing from input!`);
@@ -95,7 +95,7 @@ export class Struct {
 				else								for ( let j=0; j<part_size; j++ ) { bits.push(part_group.pack(input[j]) ); }
 			}
 			// Part
-			else { bits.push(Pack(this.#ask(part.type), data[part.name], part_rawsize, part.endian)) }
+			else { bits.push(Pack(this.#askint(part.type), data[part.name], part_rawsize, part.endian)) }
 		
 		}
 
@@ -122,7 +122,7 @@ export class Struct {
 
 		for ( let i=0; i<this.#parts.length; i++ ) {
 			const part = this.#parts[i];
-			const part_rawsize = this.#ask(part.size);
+			const part_rawsize = this.#askint(part.size);
 			const part_size = (part_rawsize === SINGLE) ? 1 : part_rawsize;
 
 			let unpacked:any;
@@ -135,7 +135,7 @@ export class Struct {
 			}
 
 			else {
-				const data_type = this.#ask(part.type);
+				const data_type = this.#askint(part.type);
 				const data_bytes = part_size*DSIZE[data_type];
 				if (pointer+data_bytes > data.length) throw(`Not enough data! (failed to access byte at ${pointer+data_bytes}!)`)
 
@@ -143,8 +143,6 @@ export class Struct {
 				pointer += data_bytes;
 			}
 
-			// console.log(part.name, part_rawsize, unpacked);
-			// if (part_rawsize === SINGLE) [unpacked] = unpacked;
 			this.#context[part.name] = unpacked;
 		}
 
