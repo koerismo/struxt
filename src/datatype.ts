@@ -169,7 +169,7 @@ export function Pack( type:int, data:ArrayLike<number>|any|null, size:int, endia
 /** Datatype pack function, used internally by Construct. */
 export function Unpack( type:int, data:Uint8Array, size:number, endianness:boolean ): ArrayLike<number>|any|null {
 
-	if (data.length !== size*DSIZE[type] && type !== DTYPE.NULL && type !== DTYPE.PADDING) throw new RangeError(`Unpack expected input of length ${size}, but received ${data.length} instead!`);
+	if (data.length !== size*DSIZE[type] && type !== DTYPE.NULL && type !== DTYPE.PADDING) throw new RangeError(`Unpack expected input of length ${size*DSIZE[type]}, but received ${data.length} instead!`);
 
 	/* 8-BIT INTEGER */
 
@@ -187,18 +187,59 @@ export function Unpack( type:int, data:Uint8Array, size:number, endianness:boole
 		if (endianness === system_endianness) return new Uint16Array(data.buffer);
 
 		let arr_out = new Uint16Array(size);
-		let dataview = new DataView(arr_out.buffer);
-		for ( let i=0; i<size; i++ ) dataview.getUint16(i*2, endianness);
+		let dataview = new DataView(data.buffer);
+		for ( let i=0; i<size; i++ ) arr_out[i] = dataview.getUint16(i*2, endianness);
 		return arr_out;
 	}
 
 	if (type === DTYPE.INT16) {
-		if (endianness === system_endianness) return Array.from(new Int16Array(data.buffer));
+		if (endianness === system_endianness) return new Int16Array(data.buffer);
 
 		let arr_out = new Int16Array(size);
-		let dataview = new DataView(arr_out.buffer);
-		for ( let i=0; i<size; i++ ) dataview.getInt16(i*2, endianness);
+		let dataview = new DataView(data.buffer);
+		for ( let i=0; i<size; i++ ) arr_out[i] = dataview.getInt16(i*2, endianness);
 		return arr_out;
+	}
+
+	/* 32-BIT INTEGER */
+
+	if (type === DTYPE.UINT32) {
+		if (endianness === system_endianness) return new Uint32Array(data.buffer);
+
+		let arr_out = new Uint32Array(size);
+		let dataview = new DataView(data.buffer);
+		for ( let i=0; i<size; i++ ) arr_out[i] = dataview.getUint32(i*4, endianness);
+		return arr_out;
+	}
+
+	if (type === DTYPE.INT32) {
+		if (endianness === system_endianness) return new Int32Array(data.buffer);
+
+		let arr_out = new Int32Array(size);
+		let dataview = new DataView(data.buffer);
+		for ( let i=0; i<size; i++ ) arr_out[i] = dataview.getInt16(i*4, endianness);
+		return arr_out;
+	}
+
+	/* FLOATS */
+
+	if (type === DTYPE.FLOAT32) {
+		if (endianness === system_endianness) return new Float32Array(data.buffer);
+
+		let arr_out = new Float32Array(size);
+		let dataview = new DataView(data.buffer);
+		for ( let i=0; i<size; i++ ) arr_out[i] = dataview.getFloat32(i*4, endianness);
+		return arr_out;
+	}
+
+	/* STRINGS */
+
+	if (type === DTYPE.CHAR) {
+		return data;
+	}
+
+	if (type === DTYPE.STR) {
+		return TDecoder.decode(data);
 	}
 
 	/* PADDING */
