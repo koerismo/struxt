@@ -1,4 +1,4 @@
-import { DTYPE, DSIZE, Pack, Unpack, system_endianness } from './datatype.js';
+import { DTYPE, DSIZE, Pack, Unpack } from './datatype.js';
 
 interface Part {
 	name:	string,
