@@ -5,7 +5,7 @@ export type int = number;
 
 
 /** Shorthand single-letter identifiers for datatypes. */
-export const SHORT: {[key: string]: string } = {
+export const DSHORT: {[key: string]: string } = {
 	INT8:	'i',
 	UINT8:	'I',
 	CHAR:	'c',

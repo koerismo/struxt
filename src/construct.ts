@@ -14,15 +14,15 @@ const MODE_NONE	  = 0,
 
 export class Construct {
 	parts: Part[];
-	partmap: Object;
+	map: Object;
 
 	#mode: 0|1|2		= MODE_NONE;
 	#dir:  Object|null	= null;
 
 	constructor( parts: Part[]=[] ) {
 		this.parts = parts;
-		this.partmap = {};
-		for ( let i=0; i<this.parts.length; i++ ) this.partmap[this.parts[i].name] = this.parts[i];
+		this.map   = {};
+		for ( let i=0; i<this.parts.length; i++ ) this.map[this.parts[i].name] = this.parts[i];
 	}
 
 	eval( name: string ) {
@@ -37,10 +37,10 @@ export class Construct {
 		let pointer = 0;
 		const target = new Uint8Array(target_size);
 		for ( let name in data ) {
-			const part = this.partmap[name];
+			const part = this.map[name];
 			const packed = Pack(part.type, data[name], part.size, part.endian);
 
-			for ( let i=0; i<packed.length; i++ ) target[pointer+i] = packed[i];
+			target.set(packed, pointer);
 			pointer += packed.length;
 		}
 
