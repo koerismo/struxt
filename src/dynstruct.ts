@@ -1,4 +1,4 @@
-import { DTYPE, DSIZE, Pack, Unpack, int, SINGLE, SYSTEM_ENDIAN } from './datatype.js';
+import { DTYPE, DSIZE, Pack, Unpack, int, SINGLE, SYSTEM_ENDIAN, DSHORT, LITTLE_ENDIAN, BIG_ENDIAN } from './datatype.js';
 
 
 /* Common Type Definitions */
@@ -43,12 +43,20 @@ export class Struct {
 			    last_order=SYSTEM_ENDIAN;
 
 			for ( let i=0; i<struct.length; i++ ) {
+				const c = struct[i];
+
+				if (c === '<') { last_order = LITTLE_ENDIAN; continue }
+				if (c === '>') { last_order = BIG_ENDIAN; continue }
+
 				const _i = parseInt(struct[i]);
-				if (_i !== NaN) {
+				if (!isNaN(_i)) {
 					if (last_size === SINGLE) last_size = _i;
 					else last_size = last_size*10 + _i;
+					continue;
 				}
-				this.add({ name: i.toString(), type:DTYPE[struct[i]], size:last_size, endian:last_order });
+
+				this.add({ name: i.toString(), type:DSHORT[struct[i]], size:last_size, endian:last_order });
+				last_size = SINGLE;
 			}
 			return;
 		}
@@ -125,7 +133,7 @@ export class Struct {
 			else {
 				// Validity check
 				if (input === undefined && part_type !== DTYPE.PADDING ) throw(`Parameter ${part.name} is missing from data!`);
-				
+
 				bits.push(Pack(part_type ?? -1, data[part.name], part_rawsize, part.endian));
 			}
 		
@@ -156,7 +164,7 @@ export class Struct {
 			const part = this.#parts[i];
 			const part_rawsize = this.#askint(part.size);
 			const part_size = (part_rawsize === SINGLE) ? 1 : part_rawsize;
-			let part_type;
+			let part_type:int|undefined;
 
 			let unpacked:any;
 			if ('group' in part) {
