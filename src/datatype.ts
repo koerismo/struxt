@@ -4,14 +4,6 @@
 export type int = number;
 
 
-/** Shorthand single-letter identifiers for datatypes. */
-export const DSHORT: {[key: string]: string } = {
-	INT8:	'i',
-	UINT8:	'I',
-	CHAR:	'c',
-	STR:	's',
-}
-
 /** Unique integer constant representations of datatypes. */
 export const DTYPE: {[key: string]: int }  = {
 	INT8: 		0,
@@ -60,6 +52,17 @@ export const DSIZE: {[key: int]: int } = {
 	14:		1,		// NULL
 }
 
+/** Shorthand single-letter identifiers for datatypes. */
+export const DSHORT: {[key: string]: int } = {
+	'x': DTYPE.PADDING,
+	'X': DTYPE.NULL,
+
+	'i': DTYPE.INT8,
+	'I': DTYPE.UINT8,
+	'c': DTYPE.CHAR,
+	's': DTYPE.STR,
+}
+
 export const SINGLE = -1;
 
 /* Global encoders/decoders for text transforms. */
@@ -89,7 +92,7 @@ export function _Pack( type:int, data:ArrayLike<number>|any|null, size:int, endi
 	// Switch/case doesn't work for this, because javascript
 	// can't handle duplicate const/let definitions even between cases.
 
-	if (data.length !== size && type !== DTYPE.NULL && type !== DTYPE.PADDING) throw new RangeError(`Pack expected input of length ${size}, but received ${data.length} instead!`);
+	if (type !== DTYPE.NULL && type !== DTYPE.PADDING && data.length !== size) throw new RangeError(`Pack expected input of length ${size}, but received ${data.length} instead!`);
 
 	/* 8-BIT INTEGER */
 

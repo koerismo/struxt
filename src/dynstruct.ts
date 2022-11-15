@@ -5,7 +5,13 @@ import { DTYPE, DSIZE, Pack, Unpack, int, SINGLE, SYSTEM_ENDIAN } from './dataty
 
 type ReturnsInt = () => int;
 type ReturnsStruct = () => Struct;
-type ComplexPart = Part|Substruct;
+type ComplexPart = (Part|Substruct) & {
+	name:	string,
+	type?:	int|ReturnsInt,
+	size?:	int|ReturnsInt,
+	group?:	Struct|ReturnsStruct,
+	endian:	boolean,
+};
 
 export interface Part {
 	name:	string,
@@ -30,7 +36,26 @@ export class Struct {
 	// #static: boolean = true;
 	// #static_size: int = 0;
 	
-	constructor() {
+	constructor( struct?:string|ComplexPart[] ) {
+		if (!struct) return;
+		if (typeof struct === 'string') {
+			let last_size=SINGLE,
+			    last_order=SYSTEM_ENDIAN;
+
+			for ( let i=0; i<struct.length; i++ ) {
+				const _i = parseInt(struct[i]);
+				if (_i !== NaN) {
+					if (last_size === SINGLE) last_size = _i;
+					else last_size = last_size*10 + _i;
+				}
+				this.add({ name: i.toString(), type:DTYPE[struct[i]], size:last_size, endian:last_order });
+			}
+			return;
+		}
+		
+		for ( let i=0; i<struct.length; i++ ) {
+			this.add(struct[i]);
+		}
 	}
 
 	eval( name:string ) {
@@ -41,11 +66,9 @@ export class Struct {
 	add( token:ComplexPart ) {
 		if (!token.name) throw(`Token must have name!`);
 
-		//@ts-ignore
+		
 		if (!token.group && (token.type===undefined || token.size===undefined || token.endian===undefined)) throw('Token must have name, type, size, and endian defined!');
-		//@ts-ignore
 		if (token.group && token.size===undefined) throw('Token must have size defined!');
-		//@ts-ignore
 		if (token.size===SINGLE && token.type===DTYPE.STR) throw('String token size cannot be SINGLE!');
 
 		// if (token.group || typeof token.size==='function' || typeof token.type==='function') this.#static = false;
@@ -64,6 +87,7 @@ export class Struct {
 		if ( typeof attr === 'function' ) {
 			attr = attr();
 			if ( typeof attr !== 'number' ) throw(`Expected parameter function to return integer, but got ${typeof attr} instead!`);
+			if ( attr%0 ) throw(`Expected parameter function to return integer, but got float instead!`);
 		};
 		if ( typeof attr !== 'number' ) throw(`Expected integer in parameter, but found ${typeof attr} instead!`);
 		if ( attr%0 ) throw(`Expected integer in parameter, but found float instead!`);
@@ -83,19 +107,27 @@ export class Struct {
 			const part = this.#parts[i];
 			const part_rawsize = this.#askint(part.size);
 			const part_size = (part_rawsize === SINGLE) ? 1 : part_rawsize;
-
-			if (!( part.name in data )) throw(`Parameter ${part.name} is missing from input!`);
-			const input = data[part.name];
+			const part_type: int|undefined = this.#ask(part.type);
+			const input: Object|undefined = data[part.name];
 
 			// Substruct
 			if ('group' in part) {
 				const part_group = this.#ask(part.group);
 
+				// Validity checks
+				if (input === undefined) throw(`Substruct ${part.name} is missing from data!`);
+				if (!(part_group instanceof Struct)) throw(`Expected Struct or Struct-returning function in group ${part.name}, got ${part_group} instead!`);
+
 				if (part_rawsize === SINGLE)		bits.push(part_group.pack(input));
 				else								for ( let j=0; j<part_size; j++ ) { bits.push(part_group.pack(input[j]) ); }
 			}
 			// Part
-			else { bits.push(Pack(this.#askint(part.type), data[part.name], part_rawsize, part.endian)) }
+			else {
+				// Validity check
+				if (input === undefined && part_type !== DTYPE.PADDING ) throw(`Parameter ${part.name} is missing from data!`);
+				
+				bits.push(Pack(part_type ?? -1, data[part.name], part_rawsize, part.endian));
+			}
 		
 		}
 
@@ -124,6 +156,7 @@ export class Struct {
 			const part = this.#parts[i];
 			const part_rawsize = this.#askint(part.size);
 			const part_size = (part_rawsize === SINGLE) ? 1 : part_rawsize;
+			let part_type;
 
 			let unpacked:any;
 			if ('group' in part) {
@@ -135,15 +168,16 @@ export class Struct {
 			}
 
 			else {
-				const data_type = this.#askint(part.type);
-				const data_bytes = part_size*DSIZE[data_type];
+				part_type = this.#askint(part.type);
+				const data_bytes = part_size*DSIZE[part_type];
 				if (pointer+data_bytes > data.length) throw(`Not enough data! (failed to access byte at ${pointer+data_bytes}!)`)
 
-				unpacked = Unpack(data_type, data.slice(pointer, pointer+data_bytes), part_rawsize, part.endian);
+				unpacked = Unpack(part_type, data.slice(pointer, pointer+data_bytes), part_rawsize, part.endian);
 				pointer += data_bytes;
 			}
 
-			this.#context[part.name] = unpacked;
+			if (part_type !== DTYPE.PADDING)
+				this.#context[part.name] = unpacked;
 		}
 
 		const target = Object.assign({}, this.#context);
