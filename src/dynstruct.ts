@@ -3,14 +3,15 @@ import { DTYPE, DSIZE, Pack, Unpack, int, SINGLE, SYSTEM_ENDIAN, DSHORT, LITTLE_
 
 /* Common Type Definitions */
 
+type SharedStruct = Struct|InternalStruct;
 type ReturnsInt = () => int;
-type ReturnsStruct = () => Struct;
+type ReturnsStruct = () => SharedStruct;
 type ComplexPart = (Part|Substruct) & {
-	name:	string,
-	type?:	int|ReturnsInt,
-	size?:	int|ReturnsInt,
-	group?:	Struct|ReturnsStruct,
-	endian:	boolean,
+	name:		string,
+	type?:		int|ReturnsInt,
+	size?:		int|ReturnsInt,
+	group?:		SharedStruct|ReturnsStruct,
+	endian?:	boolean,
 };
 
 export interface Part {
@@ -23,39 +24,64 @@ export interface Part {
 export interface Substruct {
 	name:	string,
 	size:	int|ReturnsInt,
-	group:	Struct|ReturnsStruct,
+	group:	SharedStruct|ReturnsStruct,
 };
 
 /* Complex Struct Class */
 
-export class Struct {
+export class InternalStruct {
 	#parts: ComplexPart[] = [];
 	#map: {[key: string]: ComplexPart} = {};
 	#context: {}|null = null;
 
+	__parent__?: SharedStruct;
+	__size__?: int;
+	// get __parts__() { return this.#parts };
+
 	// #static: boolean = true;
 	// #static_size: int = 0;
-	
-	constructor( struct?:string|ComplexPart[] ) {
+
+	constructor( struct?:string|ComplexPart[], parent?:SharedStruct, size?:int ) {
+		this.__parent__ = parent;
+		this.__size__ = size;
+
 		if (!struct) return;
 		if (typeof struct === 'string') {
-			let last_size=SINGLE,
-			    last_order=SYSTEM_ENDIAN;
+			let last_size = SINGLE,
+			    last_order = SYSTEM_ENDIAN,
+				active_struct: SharedStruct = this;
 
 			for ( let i=0; i<struct.length; i++ ) {
-				const c = struct[i];
+				const char = struct[i];
 
-				if (c === '<') { last_order = LITTLE_ENDIAN; continue }
-				if (c === '>') { last_order = BIG_ENDIAN; continue }
+				// Endianness
+				if (char === '<') { last_order = LITTLE_ENDIAN; continue }
+				if (char === '>') { last_order = BIG_ENDIAN; continue }
 
-				const _i = parseInt(struct[i]);
-				if (!isNaN(_i)) {
+				// Size
+				if ('0123456789'.includes(char)) {
+					const _i = parseInt(struct[i]);
 					if (last_size === SINGLE) last_size = _i;
 					else last_size = last_size*10 + _i;
 					continue;
 				}
 
-				this.add({ name: i.toString(), type:DSHORT[struct[i]], size:last_size, endian:last_order });
+				// Subgroups
+				if (char === '[') {
+					active_struct = new InternalStruct(undefined, this, last_size);
+					last_size = SINGLE
+					continue;
+				}
+
+				if (char === ']') {
+					if (active_struct.__parent__ === undefined) throw(`Encountered extra end bracket at pos ${i} in struct string!`);
+					active_struct.__parent__.add({ name:i.toString(), group:active_struct, size:active_struct.__size__ ?? SINGLE });
+					active_struct = active_struct.__parent__;
+					last_size = SINGLE;
+					continue;
+				}
+
+				active_struct.add({ name: i.toString(), type:DSHORT[struct[i]], size:last_size, endian:last_order });
 				last_size = SINGLE;
 			}
 			return;
@@ -107,7 +133,7 @@ export class Struct {
 	// 	if (this.#static) return this.#static_size;
 	// }
 
-	pack( data:Object ): Uint8Array {
+	__pack__( data:Object ): Uint8Array {
 		this.#context = Object.assign({}, data);
 
 		const bits: Uint8Array[] = [];
@@ -126,14 +152,13 @@ export class Struct {
 				if (input === undefined) throw(`Substruct ${part.name} is missing from data!`);
 				if (!(part_group instanceof Struct)) throw(`Expected Struct or Struct-returning function in group ${part.name}, got ${part_group} instead!`);
 
-				if (part_rawsize === SINGLE)		bits.push(part_group.pack(input));
-				else								for ( let j=0; j<part_size; j++ ) { bits.push(part_group.pack(input[j]) ); }
+				if (part_rawsize === SINGLE)		bits.push(part_group.__pack__(input));
+				else								for ( let j=0; j<part_size; j++ ) { bits.push(part_group.__pack__(input[j]) ); }
 			}
 			// Part
 			else {
 				// Validity check
 				if (input === undefined && part_type !== DTYPE.PADDING ) throw(`Parameter ${part.name} is missing from data!`);
-
 				bits.push(Pack(part_type ?? -1, data[part.name], part_rawsize, part.endian));
 			}
 		
@@ -153,11 +178,7 @@ export class Struct {
 		return target;
 	}
 
-	unpack( data: Uint8Array ): Object {
-		return this.__unpack(data, 0)[0];
-	}
-
-	__unpack( data:Uint8Array, pointer=0 ): Object {
+	__unpack__( data:Uint8Array, pointer=0 ): [Object, int] {
 		this.#context = {};
 
 		for ( let i=0; i<this.#parts.length; i++ ) {
@@ -171,8 +192,8 @@ export class Struct {
 				const part_group = this.#ask(part.group);
 				
 				unpacked = new Array(part_size);
-				if (part_rawsize === SINGLE)	[unpacked,] = part_group.__unpack(data, pointer);
-				else 							for ( let j=0; j<part_size; j++ ) [unpacked[j], pointer] = part_group.__unpack(data, pointer);
+				if (part_rawsize === SINGLE)	[unpacked,] = part_group.__unpack__(data, pointer);
+				else 							for ( let j=0; j<part_size; j++ ) [unpacked[j], pointer] = part_group.__unpack__(data, pointer);
 			}
 
 			else {
@@ -193,4 +214,27 @@ export class Struct {
 
 		return [target, pointer];
 	}
+}
+
+
+export class Struct extends InternalStruct {
+	constructor( struct?:string|ComplexPart[] ) {
+		super(struct);
+	}
+
+	pack( data:Object ) {
+		return super.__pack__(data);
+	}
+
+	// arr_pack( data:Array<any> ) {
+	// 	return super.pack(data);
+	// }
+
+	unpack( data:Uint8Array ) {
+		return super.__unpack__(data)[0];
+	}
+
+	// arr_unpack( data:Uint8Array ) {
+
+	// }
 }
