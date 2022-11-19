@@ -183,6 +183,7 @@ export function _Pack( type:int, data:ArrayLike<number>|any|null, size:int, endi
 /** Datatype pack function, used internally by Construct. */
 export function _Unpack( type:int, data:Uint8Array, size:number, endianness:boolean ): ArrayLike<number>|any|null {
 
+	// @ts-ignore
 	if (!(data instanceof Uint8Array)) throw new TypeError(`Unpack expected Uint8Array, but received ${data.constructor.name} instead!`);
 	if (data.length !== size*DSIZE[type] && type !== DTYPE.NULL && type !== DTYPE.PADDING) throw new RangeError(`Unpack expected input of length ${size*DSIZE[type]}, but received ${data.length} instead!`);
 
