@@ -33,17 +33,14 @@ export class InternalStruct {
 	#parts: ComplexPart[] = [];
 	#map: {[key: string]: ComplexPart} = {};
 	#context: {}|null = null;
-
-	__parent__?: SharedStruct;
-	__size__?: int;
 	// get __parts__() { return this.#parts };
 
 	// #static: boolean = true;
 	// #static_size: int = 0;
 
-	constructor( struct?:string|ComplexPart[], parent?:SharedStruct, size?:int ) {
-		this.__parent__ = parent;
-		this.__size__ = size;
+	constructor( struct?:string|ComplexPart[] ) {
+		const parents = new WeakMap();
+		const sizes = new WeakMap();
 
 		if (!struct) return;
 		if (typeof struct === 'string') {
@@ -68,15 +65,22 @@ export class InternalStruct {
 
 				// Subgroups
 				if (char === '[') {
-					active_struct = new InternalStruct(undefined, this, last_size);
+					const parent_struct = active_struct;
+					active_struct = new InternalStruct();
+
+					sizes.set(active_struct, last_size);
+					parents.set(active_struct, parent_struct);
 					last_size = SINGLE
 					continue;
 				}
 
 				if (char === ']') {
-					if (active_struct.__parent__ === undefined) throw(`Encountered extra end bracket at pos ${i} in struct string!`);
-					active_struct.__parent__.add({ name:i.toString(), group:active_struct, size:active_struct.__size__ ?? SINGLE });
-					active_struct = active_struct.__parent__;
+					const parent = parents.get(active_struct);
+					const size = sizes.get(active_struct);
+
+					if (size === undefined) throw(`Encountered extra end bracket at pos ${i} in struct string!`);
+					parent.add({ name:i.toString(), group:active_struct, size:size ?? SINGLE });
+					active_struct = parent;
 					last_size = SINGLE;
 					continue;
 				}
