@@ -92,7 +92,7 @@ export class InternalStruct {
 					const size = sizes.get(active_struct);
 
 					if (size === undefined) throw(`Encountered extra end bracket at pos ${i} in struct string!`);
-					parent.add({ name:indices.get(active_struct).toString(), group:active_struct, size:size ?? SINGLE });
+					parent.add({ name:indices.get(parent).toString(), group:active_struct, size:size ?? SINGLE });
 					active_struct = parent;
 					last_size = SINGLE;
 					continue;
@@ -174,7 +174,7 @@ export class InternalStruct {
 
 				// Validity checks
 				if (input === undefined) throw(`Substruct ${part.name} is missing from data!`);
-				if (!(part_group instanceof Struct)) throw(`Expected Struct or Struct-returning function in group ${part.name}, got ${part_group} instead!`);
+				if (!(part_group instanceof InternalStruct)) throw(`Expected Struct or Struct-returning function in group ${part.name}, got ${part_group} instead!`);
 
 				if (part_rawsize === SINGLE)		bits.push(part_group.__pack__(input));
 				else								for ( let j=0; j<part_size; j++ ) { bits.push(part_group.__pack__(input[j]) ); }
