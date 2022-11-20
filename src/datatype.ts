@@ -23,6 +23,8 @@ export const DTYPE: {[key: string]: int }  = {
 	CHAR:		11,
 	STR:		12,
 
+	BOOL:		13,
+
 	/** Padding: Packs to 0x00 bytes, skipped when unpacking. */
 	PADDING:	14,
 	/** Null: Skipped when packing, unpacks to a null array. */
@@ -48,8 +50,10 @@ export const DSIZE: {[key: int]: int } = {
 	11:		1,		// CHAR
 	12:		1,		// STR
 
-	13:		1,		// PADDING
-	14:		1,		// NULL
+	13:		1,		// BOOL
+
+	14:		1,		// PADDING
+	15:		1,		// NULL
 }
 
 /** Shorthand single-letter identifiers for datatypes. */
@@ -57,10 +61,25 @@ export const DSHORT: {[key: string]: int } = {
 	'x': DTYPE.PADDING,
 	'X': DTYPE.NULL,
 
-	'i': DTYPE.INT8,
-	'I': DTYPE.UINT8,
+	'b': DTYPE.INT8,
+	'B': DTYPE.UINT8,
+
+	'h': DTYPE.INT16,
+	'H': DTYPE.UINT16,
+
+	'i': DTYPE.INT32,
+	'I': DTYPE.UINT32,
+
+	'l': DTYPE.INT32,
+	'L': DTYPE.UINT32,
+
+	'f': DTYPE.FLOAT32,
+	'd': DTYPE.FLOAT64,
+
 	'c': DTYPE.CHAR,
 	's': DTYPE.STR,
+	
+	'?': DTYPE.BOOL,
 }
 
 export const SINGLE = -1;
@@ -155,6 +174,15 @@ export function _Pack( type:int, data:ArrayLike<number>|any|null, size:int, endi
 		return arr_out;
 	}
 
+	if (type === DTYPE.FLOAT64) {
+		if (endianness === SYSTEM_ENDIAN) return new Uint8Array(new Float64Array(data).buffer);
+
+		let arr_out = new Uint8Array(data.length*8);
+		let dataview = new DataView(arr_out.buffer);
+		for ( let i=0; i<data.length; i++ ) dataview.setFloat64(i*8, data[i], endianness);
+		return arr_out;
+	}
+
 	/* STRINGS */
 
 	if (type === DTYPE.CHAR) {
@@ -163,6 +191,12 @@ export function _Pack( type:int, data:ArrayLike<number>|any|null, size:int, endi
 
 	if (type === DTYPE.STR) {
 		return TEncoder.encode(data);
+	}
+
+	/* BOOL */
+	
+	if (type === DTYPE.BOOL) {
+		return new Uint8Array( data );
 	}
 
 	/* PADDING */
@@ -248,6 +282,15 @@ export function _Unpack( type:int, data:Uint8Array, size:number, endianness:bool
 		return arr_out;
 	}
 
+	if (type === DTYPE.FLOAT64) {
+		if (endianness === SYSTEM_ENDIAN) return new Float64Array(data.buffer);
+
+		let arr_out = new Float64Array(size);
+		let dataview = new DataView(data.buffer);
+		for ( let i=0; i<size; i++ ) arr_out[i] = dataview.getFloat64(i*8, endianness);
+		return arr_out;
+	}
+
 	/* STRINGS */
 
 	if (type === DTYPE.CHAR) {
@@ -256,6 +299,12 @@ export function _Unpack( type:int, data:Uint8Array, size:number, endianness:bool
 
 	if (type === DTYPE.STR) {
 		return TDecoder.decode(data);
+	}
+
+	/* BOOL */
+
+	if (type === DTYPE.BOOL) {
+		return data;
 	}
 
 	/* PADDING */
@@ -267,6 +316,7 @@ export function _Unpack( type:int, data:Uint8Array, size:number, endianness:bool
 	if (type === DTYPE.PADDING) {
 		return null;
 	}
+	
 	
 	throw('Unrecognized datatype '+type+'!');
 }

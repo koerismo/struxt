@@ -27,6 +27,14 @@ export interface Substruct {
 	group:	SharedStruct|ReturnsStruct,
 };
 
+type DataTarget = Object|ArrayLike<any>|Map<string,any>;
+interface StructDataOptions {
+	make:	() => DataTarget,
+	get:	( target:DataTarget, id:int, name:string ) => any,
+	set:	( target:DataTarget, value:any, id:int, name:string ) => void,
+}
+
+
 /* Complex Struct Class */
 
 export class InternalStruct {
@@ -41,6 +49,8 @@ export class InternalStruct {
 	constructor( struct?:string|ComplexPart[] ) {
 		const parents = new WeakMap();
 		const sizes = new WeakMap();
+		const indices = new WeakMap();
+		indices.set(this, 0);
 
 		if (!struct) return;
 		if (typeof struct === 'string') {
@@ -54,6 +64,7 @@ export class InternalStruct {
 				// Endianness
 				if (char === '<') { last_order = LITTLE_ENDIAN; continue }
 				if (char === '>') { last_order = BIG_ENDIAN; continue }
+				if (char === '=') { last_order = SYSTEM_ENDIAN; continue }
 
 				// Size
 				if ('0123456789'.includes(char)) {
@@ -63,29 +74,38 @@ export class InternalStruct {
 					continue;
 				}
 
-				// Subgroups
+				// Enter subgroup
 				if (char === '[') {
 					const parent_struct = active_struct;
 					active_struct = new InternalStruct();
 
 					sizes.set(active_struct, last_size);
 					parents.set(active_struct, parent_struct);
+					indices.set(active_struct, 0);
 					last_size = SINGLE
 					continue;
 				}
 
+				// Exit subgroup
 				if (char === ']') {
 					const parent = parents.get(active_struct);
 					const size = sizes.get(active_struct);
 
 					if (size === undefined) throw(`Encountered extra end bracket at pos ${i} in struct string!`);
-					parent.add({ name:i.toString(), group:active_struct, size:size ?? SINGLE });
+					parent.add({ name:indices.get(active_struct).toString(), group:active_struct, size:size ?? SINGLE });
 					active_struct = parent;
 					last_size = SINGLE;
 					continue;
 				}
 
-				active_struct.add({ name: i.toString(), type:DSHORT[struct[i]], size:last_size, endian:last_order });
+				// Comments
+				if (char === ' ' || char === '\n' || char === '\t') continue;
+
+				// Unrecognized character
+				if (DSHORT[char] === undefined) throw(`Unrecognized struct char ${char} at C${i}!`);
+
+				active_struct.add({ name:indices.get(active_struct).toString(), type:DSHORT[struct[i]], size:last_size, endian:last_order });
+				indices.set(active_struct, indices.get(active_struct)+1);
 				last_size = SINGLE;
 			}
 			return;
@@ -159,6 +179,7 @@ export class InternalStruct {
 				if (part_rawsize === SINGLE)		bits.push(part_group.__pack__(input));
 				else								for ( let j=0; j<part_size; j++ ) { bits.push(part_group.__pack__(input[j]) ); }
 			}
+
 			// Part
 			else {
 				// Validity check
@@ -193,7 +214,7 @@ export class InternalStruct {
 
 			let unpacked:any;
 			if ('group' in part) {
-				const part_group = this.#ask(part.group);
+				const part_group: SharedStruct = this.#ask(part.group);
 				
 				unpacked = new Array(part_size);
 				if (part_rawsize === SINGLE)	[unpacked,] = part_group.__unpack__(data, pointer);
