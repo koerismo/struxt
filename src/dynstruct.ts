@@ -165,7 +165,6 @@ export class InternalStruct {
 			const part = this.#parts[i];
 			const part_rawsize = this.#askint(part.size);
 			const part_size = (part_rawsize === SINGLE) ? 1 : part_rawsize;
-			const part_type: int|undefined = this.#ask(part.type);
 			const input: Object|undefined = data[part.name];
 
 			// Substruct
@@ -182,15 +181,16 @@ export class InternalStruct {
 
 			// Part
 			else {
+				const part_type = this.#askint(part.type);
+
 				// Validity check
 				if (input === undefined && part_type !== DTYPE.PADDING ) throw(`Parameter ${part.name} is missing from data!`);
-				bits.push(Pack(part_type ?? -1, data[part.name], part_rawsize, part.endian));
+				bits.push(Pack(part_type, data[part.name], part_rawsize, part.endian));
 			}
-		
 		}
 
 		let target_size = 0;
-		for ( let bit of bits ) target_size += bit.length;
+		for ( let i=0; i<bits.length; i++ ) target_size += bits[i].length;
 
 		let pointer = 0;
 		const target = new Uint8Array(target_size);
