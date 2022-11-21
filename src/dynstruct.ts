@@ -104,7 +104,7 @@ export class InternalStruct {
 				// Unrecognized character
 				if (DSHORT[char] === undefined) throw(`Unrecognized struct char ${char} at C${i}!`);
 
-				active_struct.add({ name:indices.get(active_struct).toString(), type:DSHORT[struct[i]], size:last_size, endian:last_order });
+				active_struct.add({ name:indices.get(active_struct), type:DSHORT[struct[i]], size:last_size, endian:last_order });
 				indices.set(active_struct, indices.get(active_struct)+1);
 				last_size = SINGLE;
 			}
@@ -122,12 +122,14 @@ export class InternalStruct {
 	}
 
 	add( token:ComplexPart ) {
-		if (!token.name) throw(`Token must have name!`);
+		if (token.name===undefined) throw(`Token must have name!`);
 
-		
-		if (!token.group && (token.type===undefined || token.size===undefined || token.endian===undefined)) throw('Token must have name, type, size, and endian defined!');
-		if (token.group && token.size===undefined) throw('Token must have size defined!');
+		const group = (token.group !== undefined);
+		if (!group && token.type===undefined) throw('Token must have name and type defined!');
 		if (token.size===SINGLE && token.type===DTYPE.STR) throw('String token size cannot be SINGLE!');
+
+		token.size ??= SINGLE;
+		if (!group) token.endian ??= LITTLE_ENDIAN;
 
 		// if (token.group || typeof token.size==='function' || typeof token.type==='function') this.#static = false;
 		// if (this.#static) this.#static_size += DSIZE[token.type]*token.size;
