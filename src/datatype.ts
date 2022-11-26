@@ -1,7 +1,4 @@
-/** This file defines the types used by Construct as well as their packing/unpacking methods. */
-
-/** Abstract integer type. */
-export type int = number;
+import { int } from './types.js';
 
 /** Constant used to identify directly-embedded components. */
 export const SINGLE = -1;
@@ -84,6 +81,12 @@ export const DSHORT: {[key: string]: int } = {
 	'?': DTYPE.BOOL,
 }
 
+/* A table of irregular non-array format IDs. (Non-SINGLE) */
+export const DNARRAY: {[key: string]: true} = {
+	12: true,
+	14: true,
+};
+
 
 /* Global encoders/decoders for text transforms. */
 const TEncoder = new TextEncoder();
@@ -95,28 +98,8 @@ export const SYSTEM_ENDIAN = (new Uint8Array(new Uint16Array([255]).buffer)[0] =
 export const BIG_ENDIAN = false,
              LITTLE_ENDIAN = true;
 
-function supports_single( type:int ) {
-	return ( type !== DTYPE.PADDING && type !== DTYPE.STR );
-}
-
-export function Pack( type:int, data:ArrayLike<number>|any|null, size:int, endianness:boolean ): Uint8Array {
-	if (size === SINGLE) {
-		if (supports_single(type)) return _Pack( type, [data], 1, endianness );
-		return _Pack( type, data, 1, endianness );
-	}
-	else return _Pack( type, data, size, endianness );
-}
-
-export function Unpack( type:int, data:Uint8Array, size:int, endianness:boolean ): ArrayLike<number>|any|null {
-	if (size === SINGLE) {
-		if (supports_single(type)) return _Unpack( type, data, 1, endianness )[0];
-		return _Unpack( type, data, 1, endianness );
-	} 
-	else return _Unpack( type, data, size, endianness );
-}
-
 /** Datatype pack function, used internally by Construct. */
-export function _Pack( type:int, data:ArrayLike<number>|any|null, size:int, endianness:boolean ): Uint8Array {
+export function Pack( type:int, data:ArrayLike<number>|any|null, size:int, endianness:boolean ): Uint8Array {
 
 	// Switch/case doesn't work for this, because javascript
 	// can't handle duplicate const/let definitions even between cases.
@@ -225,7 +208,7 @@ export function _Pack( type:int, data:ArrayLike<number>|any|null, size:int, endi
 }
 
 /** Datatype pack function, used internally by Construct. */
-export function _Unpack( type:int, data:Uint8Array, size:number, endianness:boolean ): ArrayLike<number>|any|null {
+export function Unpack( type:int, data:Uint8Array, size:number, endianness:boolean ): ArrayLike<number>|any|null {
 
 	// @ts-ignore
 	if (!(data instanceof Uint8Array)) throw new TypeError(`Unpack expected Uint8Array, but received ${data.constructor.name} instead!`);

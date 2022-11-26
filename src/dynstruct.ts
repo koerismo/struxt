@@ -1,31 +1,6 @@
-import { DTYPE, DBYTES, Pack, Unpack, int, SINGLE, SYSTEM_ENDIAN, DSHORT, LITTLE_ENDIAN, BIG_ENDIAN, DSINGLE } from './datatype.js';
+import { DTYPE, DBYTES, DNARRAY, Pack, Unpack, SINGLE, SYSTEM_ENDIAN, DSHORT, LITTLE_ENDIAN, BIG_ENDIAN } from './datatype.js';
+import { InternalPart, ExternalPart, SharedStruct, int } from './types.js';
 
-
-/* Common Type Definitions */
-
-type SharedStruct = Struct|InternalStruct;
-type ReturnsInt = () => int;
-type ReturnsStruct = () => SharedStruct;
-type ComplexPart = (Part|Substruct) & {
-	name:		string,
-	type?:		int|ReturnsInt,
-	size?:		int|ReturnsInt,
-	group?:		SharedStruct|ReturnsStruct,
-	endian?:	boolean,
-};
-
-export interface Part {
-	name:	string,
-	type:	int|ReturnsInt,
-	size:	int|ReturnsInt,
-	endian: boolean,
-};
-
-export interface Substruct {
-	name:	string,
-	size:	int|ReturnsInt,
-	group:	SharedStruct|ReturnsStruct,
-};
 
 type DataTarget = Object|ArrayLike<any>|Map<string,any>;
 interface StructDataOptions {
@@ -38,15 +13,15 @@ interface StructDataOptions {
 /* Complex Struct Class */
 
 export class InternalStruct {
-	#parts: ComplexPart[] = [];
-	#map: {[key: string]: ComplexPart} = {};
+	#parts: InternalPart[] = [];
+	#map: {[key: string]: InternalPart} = {};
 	#context: {}|null = null;
 	// get __parts__() { return this.#parts };
 
 	// #static: boolean = true;
 	// #static_size: int = 0;
 
-	constructor( struct?:string|ComplexPart[] ) {
+	constructor( struct?:string|ExternalPart[] ) {
 		const parents = new WeakMap();
 		const sizes = new WeakMap();
 		const indices = new WeakMap();
@@ -122,20 +97,23 @@ export class InternalStruct {
 		return this.#context[name];
 	}
 
-	add( token:ComplexPart ) {
-		if (token.name===undefined) throw(`Token must have name!`);
+	add( token:ExternalPart ) {
 
-		const group = (token.group !== undefined);
-		if (!group && token.type===undefined) throw('Token must have name and type defined!');
+		const norm_group  = ('group'  in token && !!token.group) ? token.group : null,
+		      norm_type   = ('type'   in token && token.type   !== null && token.type   !== undefined) ? token.type : null,
+		      norm_endian = ('endian' in token && token.endian !== null && token.endian !== undefined && norm_type) ? token.endian : null;
 
-		token.size ??= SINGLE;
-		if (!group) token.endian ??= LITTLE_ENDIAN;
+		const part = {
+			name:	token.name ?? null,
+			size:	token.size ?? SINGLE,
+			endian:	norm_endian ?? LITTLE_ENDIAN,
+			group:	norm_group,
+			type:	norm_type,
+		}
 
-		// if (token.group || typeof token.size==='function' || typeof token.type==='function') this.#static = false;
-		// if (this.#static) this.#static_size += DBYTES[token.type]*token.size;
-
-		this.#parts.push(token);
-		this.#map[token.name] = token;
+		if (part.type !== DTYPE.PADDING && part.name === null) throw(`Part with datatype ${part.type} is missing name!`);
+		if (norm_group === null && norm_type === null) throw('Part has neither group or type defined!');
+		this.#parts.push(part as InternalPart);
 	}
 
 	#ask( attr:any|Function ): any {
@@ -154,40 +132,45 @@ export class InternalStruct {
 		return attr;
 	}
 
-	// predict_packed_size() {
-	// 	if (!this.#context && !this.#static) throw('Dynamic struct size cannot be predicted outside of pack context!');
-	// 	if (this.#static) return this.#static_size;
-	// }
-
 	__pack__( data:Object ): Uint8Array {
 		this.#context = Object.assign({}, data);
-
+		
 		const bits: Uint8Array[] = [];
 		for ( let i=0; i<this.#parts.length; i++ ) {
 			const part = this.#parts[i];
-			const part_rawsize = this.#askint(part.size);
-			const part_size = (part_rawsize === SINGLE) ? 1 : part_rawsize;
-			const input: Object|undefined = data[part.name];
 
-			// Substruct
-			if ('group' in part) {
-				const part_group = this.#ask(part.group);
+			const part_rsize  = this.#askint(part.size);
+			const part_fsize  = (part_rsize===SINGLE) ? 1 : part_rsize;
+			const part_type   = (part.type===null) ? null : this.#ask(part.type);
+			const part_group  = (part.group===null) ? null : this.#ask(part.group);
+			const part_data   = (part.name===null) ? null : data[part.name];
 
-				// Validity checks
-				if (input === undefined) throw(`Substruct ${part.name} is missing from data!`);
-				if (!(part_group instanceof InternalStruct)) throw(`Expected Struct or Struct-returning function in group ${part.name}, got ${part_group} instead!`);
+			if (part_group!==null && part_type!==null) throw(`Part ${part.name} evaluated to both substruct and component! Only one of type/group must be defined!`);
+			if (part_group===null && part_type===null) throw(`Part ${part.name} evaluated to neither substruct or component! One of type/group must be defined!`);
 
-				if (part_rawsize === SINGLE)		bits.push(part_group.__pack__(input));
-				else								for ( let j=0; j<part_size; j++ ) { bits.push(part_group.__pack__(input[j]) ); }
+			if (part_group) {
+				/* SUBSTRUCT */
+
+				// Validate
+				if (part_data===undefined) throw(`Substruct ${part.name} was not provided with context in input!`);
+
+				// Write
+				if (part_rsize===SINGLE)	bits.push(part_group.__pack__(part_data));
+				else 						for ( let j=0; j<part_fsize; j++ ) bits.push(part_group.__pack__(part_data[j]));
+
 			}
-
-			// Part
 			else {
-				const part_type = this.#askint(part.type);
+				/* COMPONENT */
 
-				// Validity check
-				if (input === undefined && part_type !== DTYPE.PADDING ) throw(`Parameter ${part.name} is missing from data!`);
-				bits.push(Pack(part_type, data[part.name], part_rawsize, part.endian));
+				// Validate
+				if (part_data===undefined && part.name!==null ) throw(`Component ${part.name} was not provided with data in input!`);
+
+				// Write
+				if (part_rsize===SINGLE) {
+					if (DNARRAY[part_type as number])	bits.push(Pack(part_type as number, part_data, part_fsize, part.endian));
+					else								bits.push(Pack(part_type as number, [part_data], part_fsize, part.endian));
+				}
+				else	bits.push(Pack(part_type as number, part_data, part_fsize, part.endian));
 			}
 		}
 
@@ -210,42 +193,51 @@ export class InternalStruct {
 
 		for ( let i=0; i<this.#parts.length; i++ ) {
 			const part = this.#parts[i];
-			const part_rawsize = this.#askint(part.size);
-			const part_size = (part_rawsize === SINGLE) ? 1 : part_rawsize;
-			let part_type:int|undefined;
 
-			let unpacked:any;
-			if ('group' in part) {
-				const part_group: SharedStruct = this.#ask(part.group);
-				
-				unpacked = new Array(part_size);
-				if (part_rawsize === SINGLE)	[unpacked,] = part_group.__unpack__(data, pointer);
-				else 							for ( let j=0; j<part_size; j++ ) [unpacked[j], pointer] = part_group.__unpack__(data, pointer);
+			const part_rsize  = this.#askint(part.size);
+			const part_fsize  = (part_rsize===SINGLE) ? 1 : part_rsize;
+			const part_type   = (part.type===null) ? null : this.#askint(part.type);
+			const part_group  = (part.group===null) ? null : this.#ask(part.group);
+			let unpacked: any;
+
+			if (part_group!==null && part_type!==null) throw(`Part ${part.name} evaluated to both substruct and component! Only one of type/group must be defined!`);
+			if (part_group===null && part_type===null) throw(`Part ${part.name} evaluated to neither substruct or component! One of type/group must be defined!`);
+		
+			if (part_group) {
+				/* SUBSTRUCT */
+
+				if (part_rsize === SINGLE)
+					[unpacked,] = part_group.__unpack__(data, pointer);
+				else {
+					unpacked = new Array(part_fsize);
+					for ( let j=0; j<part_fsize; j++ ) [unpacked[j], pointer] = part_group.__unpack__(data, pointer);
+				}
 			}
 
 			else {
-				part_type = this.#askint(part.type);
-				const data_bytes = part_size*DBYTES[part_type];
-				if (pointer+data_bytes > data.length) throw(`Not enough data! (failed to access byte at ${pointer+data_bytes}!)`)
+				/* COMPONENT */
 
-				unpacked = Unpack(part_type, data.slice(pointer, pointer+data_bytes), part_rawsize, part.endian);
-				pointer += data_bytes;
+				const size_bytes = part_fsize*DBYTES[part_type as number];
+				pointer += size_bytes;
+
+				if (pointer > data.length) throw(`Not enough data! (Attempted to access byte at index ${pointer})`);
+				if (part.name !== null) {
+					unpacked = Unpack(part_type as number, data.slice(pointer-size_bytes, pointer), part_fsize, part.endian);
+					if (part_rsize === SINGLE && !DNARRAY[part_type as number]) [unpacked] = unpacked;
+				}
 			}
 
-			if (part_type !== DTYPE.PADDING)
-				this.#context[part.name] = unpacked;
+			if (unpacked) this.#context[part.name as string] = unpacked;
 		}
-
+		
 		const target = Object.assign({}, this.#context);
 		this.#context = null;
-
 		return [target, pointer];
 	}
 }
 
-
 export class Struct extends InternalStruct {
-	constructor( struct?:string|ComplexPart[] ) {
+	constructor( struct?:string|ExternalPart[] ) {
 		super(struct);
 	}
 
@@ -253,15 +245,7 @@ export class Struct extends InternalStruct {
 		return super.__pack__(data);
 	}
 
-	// arr_pack( data:Array<any> ) {
-	// 	return super.pack(data);
-	// }
-
 	unpack( data:Uint8Array ) {
 		return super.__unpack__(data)[0];
 	}
-
-	// arr_unpack( data:Uint8Array ) {
-
-	// }
 }
