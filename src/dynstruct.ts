@@ -1,4 +1,4 @@
-import { DTYPE, DSIZE, Pack, Unpack, int, SINGLE, SYSTEM_ENDIAN, DSHORT, LITTLE_ENDIAN, BIG_ENDIAN } from './datatype.js';
+import { DTYPE, DBYTES, Pack, Unpack, int, SINGLE, SYSTEM_ENDIAN, DSHORT, LITTLE_ENDIAN, BIG_ENDIAN, DSINGLE } from './datatype.js';
 
 
 /* Common Type Definitions */
@@ -54,7 +54,7 @@ export class InternalStruct {
 
 		if (!struct) return;
 		if (typeof struct === 'string') {
-			let last_size = SINGLE,
+			let last_size: number = SINGLE,
 			    last_order = SYSTEM_ENDIAN,
 				active_struct: SharedStruct = this;
 
@@ -92,7 +92,7 @@ export class InternalStruct {
 					const size = sizes.get(active_struct);
 
 					if (size === undefined) throw(`Encountered extra end bracket at pos ${i} in struct string!`);
-					parent.add({ name:indices.get(parent).toString(), group:active_struct, size:size ?? SINGLE });
+					parent.add({ name:indices.get(parent), group:active_struct, size:size });
 					active_struct = parent;
 					last_size = SINGLE;
 					continue;
@@ -105,7 +105,8 @@ export class InternalStruct {
 				if (DSHORT[char] === undefined) throw(`Unrecognized struct char ${char} at C${i}!`);
 
 				active_struct.add({ name:indices.get(active_struct), type:DSHORT[struct[i]], size:last_size, endian:last_order });
-				indices.set(active_struct, indices.get(active_struct)+1);
+				if (DSHORT[char] !== DTYPE.PADDING) indices.set(active_struct, indices.get(active_struct)+1);
+				
 				last_size = SINGLE;
 			}
 			return;
@@ -126,13 +127,12 @@ export class InternalStruct {
 
 		const group = (token.group !== undefined);
 		if (!group && token.type===undefined) throw('Token must have name and type defined!');
-		if (token.size===SINGLE && token.type===DTYPE.STR) throw('String token size cannot be SINGLE!');
 
 		token.size ??= SINGLE;
 		if (!group) token.endian ??= LITTLE_ENDIAN;
 
 		// if (token.group || typeof token.size==='function' || typeof token.type==='function') this.#static = false;
-		// if (this.#static) this.#static_size += DSIZE[token.type]*token.size;
+		// if (this.#static) this.#static_size += DBYTES[token.type]*token.size;
 
 		this.#parts.push(token);
 		this.#map[token.name] = token;
@@ -225,7 +225,7 @@ export class InternalStruct {
 
 			else {
 				part_type = this.#askint(part.type);
-				const data_bytes = part_size*DSIZE[part_type];
+				const data_bytes = part_size*DBYTES[part_type];
 				if (pointer+data_bytes > data.length) throw(`Not enough data! (failed to access byte at ${pointer+data_bytes}!)`)
 
 				unpacked = Unpack(part_type, data.slice(pointer, pointer+data_bytes), part_rawsize, part.endian);

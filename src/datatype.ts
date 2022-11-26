@@ -3,6 +3,8 @@
 /** Abstract integer type. */
 export type int = number;
 
+/** Constant used to identify directly-embedded components. */
+export const SINGLE = -1;
 
 /** Unique integer constant representations of datatypes. */
 export const DTYPE: {[key: string]: int }  = {
@@ -32,7 +34,7 @@ export const DTYPE: {[key: string]: int }  = {
 };
 
 /** Sizes of each data type in bytes-per-unit. */
-export const DSIZE: {[key: int]: int } = {
+export const DBYTES: {[key: int]: int } = {
 	0:		1,		// INT8
 	1:		2,		// INT16
 	2:		4,		// INT32
@@ -53,7 +55,7 @@ export const DSIZE: {[key: int]: int } = {
 	13:		1,		// BOOL
 
 	14:		1,		// PADDING
-	15:		1,		// NULL
+	15:		0,		// NULL
 }
 
 /** Shorthand single-letter identifiers for datatypes. */
@@ -82,7 +84,6 @@ export const DSHORT: {[key: string]: int } = {
 	'?': DTYPE.BOOL,
 }
 
-export const SINGLE = -1;
 
 /* Global encoders/decoders for text transforms. */
 const TEncoder = new TextEncoder();
@@ -94,14 +95,23 @@ export const SYSTEM_ENDIAN = (new Uint8Array(new Uint16Array([255]).buffer)[0] =
 export const BIG_ENDIAN = false,
              LITTLE_ENDIAN = true;
 
+function supports_single( type:int ) {
+	return ( type !== DTYPE.PADDING && type !== DTYPE.STR );
+}
 
 export function Pack( type:int, data:ArrayLike<number>|any|null, size:int, endianness:boolean ): Uint8Array {
-	if (size === SINGLE) return _Pack( type, [data], 1, endianness );
+	if (size === SINGLE) {
+		if (supports_single(type)) return _Pack( type, [data], 1, endianness );
+		return _Pack( type, data, 1, endianness );
+	}
 	else return _Pack( type, data, size, endianness );
 }
 
 export function Unpack( type:int, data:Uint8Array, size:int, endianness:boolean ): ArrayLike<number>|any|null {
-	if (size === SINGLE) return _Unpack( type, data, 1, endianness )[0];
+	if (size === SINGLE) {
+		if (supports_single(type)) return _Unpack( type, data, 1, endianness )[0];
+		return _Unpack( type, data, 1, endianness );
+	} 
 	else return _Unpack( type, data, size, endianness );
 }
 
@@ -219,7 +229,7 @@ export function _Unpack( type:int, data:Uint8Array, size:number, endianness:bool
 
 	// @ts-ignore
 	if (!(data instanceof Uint8Array)) throw new TypeError(`Unpack expected Uint8Array, but received ${data.constructor.name} instead!`);
-	if (data.length !== size*DSIZE[type] && type !== DTYPE.NULL && type !== DTYPE.PADDING) throw new RangeError(`Unpack expected input of length ${size*DSIZE[type]}, but received ${data.length} instead!`);
+	if (data.length !== size*DBYTES[type] && type !== DTYPE.NULL && type !== DTYPE.PADDING) throw new RangeError(`Unpack expected input of length ${size*DBYTES[type]}, but received ${data.length} instead!`);
 
 	/* 8-BIT INTEGER */
 
