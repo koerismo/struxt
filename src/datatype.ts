@@ -3,8 +3,11 @@ import { int } from './types.js';
 /** Constant used to identify directly-embedded components. */
 export const SINGLE = -1;
 
+/** Constant used to identify null-terminated variable length components. NOT IMPLEMENTED! */
+// export const NULLSTOP = -2;
+
 /** Unique integer constant representations of datatypes. */
-export const DTYPE: {[key: string]: int }  = {
+export const DTYPE = {
 	INT8: 		0,
 	INT16:		1,
 	INT32:		2,
@@ -17,7 +20,7 @@ export const DTYPE: {[key: string]: int }  = {
 
 	FLOAT32:	8,
 	FLOAT64:	9,
-	FLOAT128:	10,
+//	FLOAT128:	10,	(NOT IMPLEMENTED)
 
 	CHAR:		11,
 	STR:		12,
@@ -28,10 +31,10 @@ export const DTYPE: {[key: string]: int }  = {
 	PADDING:	14,
 	/** Null: Skipped when packing, unpacks to a null array. */
 	NULL:		15,
-};
+} as const;
 
 /** Sizes of each data type in bytes-per-unit. */
-export const DBYTES: {[key: int]: int } = {
+export const DBYTES = {
 	0:		1,		// INT8
 	1:		2,		// INT16
 	2:		4,		// INT32
@@ -44,7 +47,7 @@ export const DBYTES: {[key: int]: int } = {
 
 	8:		4,		// FLOAT32
 	9:		8,		// FLOAT64
-	10:		16,		// FLOAT128
+//	10:		16,		// FLOAT128 (NOT IMPLEMENTED)
 
 	11:		1,		// CHAR
 	12:		1,		// STR
@@ -53,10 +56,10 @@ export const DBYTES: {[key: int]: int } = {
 
 	14:		1,		// PADDING
 	15:		0,		// NULL
-}
+} as const;
 
 /** Shorthand single-letter identifiers for datatypes. */
-export const DSHORT: {[key: string]: int } = {
+export const DSHORT = {
 	'x': DTYPE.PADDING,
 	'X': DTYPE.NULL,
 
@@ -77,14 +80,14 @@ export const DSHORT: {[key: string]: int } = {
 
 	'c': DTYPE.CHAR,
 	's': DTYPE.STR,
-	
-	'?': DTYPE.BOOL,
-}
 
-/* A table of irregular non-array format IDs. (Non-SINGLE) */
+	'?': DTYPE.BOOL,
+} as const;
+
+/* A table of irregular non-array format IDs. (Not compatible with SINGLE) */
 export const DNARRAY: {[key: string]: true} = {
-	12: true,
-	14: true,
+	12: true,		// STR
+	14: true,		// PADDING
 };
 
 
@@ -111,7 +114,7 @@ export function Pack( type:int, data:ArrayLike<number>|any|null, size:int, endia
 	if (type === DTYPE.UINT8) {
 		return new Uint8Array( data );
 	}
-		
+
 	if (type === DTYPE.INT8) {
 		return new Uint8Array(new Int8Array(data).buffer);
 	}
@@ -187,7 +190,7 @@ export function Pack( type:int, data:ArrayLike<number>|any|null, size:int, endia
 	}
 
 	/* BOOL */
-	
+
 	if (type === DTYPE.BOOL) {
 		return new Uint8Array( data );
 	}
@@ -219,7 +222,7 @@ export function Unpack( type:int, data:Uint8Array, size:number, endianness:boole
 	if (type === DTYPE.UINT8) {
 		return data;
 	}
-		
+
 	if (type === DTYPE.INT8) {
 		return new Int8Array(data.buffer);
 	}
@@ -309,7 +312,7 @@ export function Unpack( type:int, data:Uint8Array, size:number, endianness:boole
 	if (type === DTYPE.PADDING) {
 		return null;
 	}
-	
-	
+
+
 	throw('Unrecognized datatype '+type+'!');
 }

@@ -1,13 +1,13 @@
 import { DTYPE, DBYTES, DNARRAY, Pack, Unpack, SINGLE, SYSTEM_ENDIAN, DSHORT, LITTLE_ENDIAN, BIG_ENDIAN } from './datatype.js';
-import { InternalPart, ExternalPart, SharedStruct, int } from './types.js';
+import { InternalPart, ExternalPart, SharedStruct, int, KeyError, TypeXorError, BufferError, ParseError } from './types.js';
 
 
-type DataTarget = Object|ArrayLike<any>|Map<string,any>;
-interface StructDataOptions {
-	make:	() => DataTarget,
-	get:	( target:DataTarget, id:int, name:string ) => any,
-	set:	( target:DataTarget, value:any, id:int, name:string ) => void,
-}
+// type DataTarget = Object|ArrayLike<any>|Map<string,any>;
+// interface StructDataOptions {
+// 	make:	() => DataTarget,
+// 	get:	( target:DataTarget, id:int, name:string ) => any,
+// 	set:	( target:DataTarget, value:any, id:int, name:string ) => void,
+// }
 
 
 /* Complex Struct Class */
@@ -31,7 +31,8 @@ export class InternalStruct {
 		if (typeof struct === 'string') {
 			let last_size: number = SINGLE,
 			    last_order = SYSTEM_ENDIAN,
-				active_struct: SharedStruct = this;
+				active_struct: SharedStruct = this,
+				in_comment = false;
 
 			for ( let i=0; i<struct.length; i++ ) {
 				const char = struct[i];
@@ -66,7 +67,7 @@ export class InternalStruct {
 					const parent = parents.get(active_struct);
 					const size = sizes.get(active_struct);
 
-					if (size === undefined) throw(`Encountered extra end bracket at pos ${i} in struct string!`);
+					if (size === undefined) throw new ParseError(`Encountered extra end bracket at pos ${i} in struct string!`);
 					parent.add({ name:indices.get(parent), group:active_struct, size:size });
 					active_struct = parent;
 					last_size = SINGLE;
@@ -74,19 +75,24 @@ export class InternalStruct {
 				}
 
 				// Comments
-				if (char === ' ' || char === '\n' || char === '\t') continue;
+				if (char === '/' && struct[i+1] === '/') in_comment = true;
+				if (in_comment && char === '\n') in_comment = false;
+				if (in_comment) continue;
+
+				// Spacing
+				if (char === ' ' || char === '\n' || char === '\r' || char === '\t') continue;
 
 				// Unrecognized character
-				if (DSHORT[char] === undefined) throw(`Unrecognized struct char ${char} at C${i}!`);
+				if (DSHORT[char] === undefined) throw new ParseError(`Unrecognized struct char ${char} at C${i}!`);
 
-				active_struct.add({ name:indices.get(active_struct), type:DSHORT[struct[i]], size:last_size, endian:last_order });
+				active_struct.add({ name:indices.get(active_struct), type:DSHORT[char], size:last_size, endian:last_order });
 				if (DSHORT[char] !== DTYPE.PADDING) indices.set(active_struct, indices.get(active_struct)+1);
-				
+
 				last_size = SINGLE;
 			}
 			return;
 		}
-		
+
 		for ( let i=0; i<struct.length; i++ ) {
 			this.add(struct[i]);
 		}
@@ -124,17 +130,17 @@ export class InternalStruct {
 	#askint( attr:any|Function ): int {
 		if ( typeof attr === 'function' ) {
 			attr = attr();
-			if ( typeof attr !== 'number' ) throw(`Expected parameter function to return integer, but got ${typeof attr} instead!`);
-			if ( attr%0 ) throw(`Expected parameter function to return integer, but got float instead!`);
+			if ( typeof attr !== 'number' ) throw new TypeError(`Expected parameter function to return integer, but got ${typeof attr} instead!`);
+			if ( attr%0 ) throw new TypeError(`Expected parameter function to return integer, but got float instead!`);
 		};
-		if ( typeof attr !== 'number' ) throw(`Expected integer in parameter, but found ${typeof attr} instead!`);
-		if ( attr%0 ) throw(`Expected integer in parameter, but found float instead!`);
+		if ( typeof attr !== 'number' ) throw new TypeError(`Expected integer in parameter, but found ${typeof attr} instead!`);
+		if ( attr%0 ) throw new TypeError(`Expected integer in parameter, but found float instead!`);
 		return attr;
 	}
 
 	__pack__( data:Object ): Uint8Array {
 		this.#context = Object.assign({}, data);
-		
+
 		const bits: Uint8Array[] = [];
 		for ( let i=0; i<this.#parts.length; i++ ) {
 			const part = this.#parts[i];
@@ -145,14 +151,14 @@ export class InternalStruct {
 			const part_group  = (part.group===null) ? null : this.#ask(part.group);
 			const part_data   = (part.name===null) ? null : data[part.name];
 
-			if (part_group!==null && part_type!==null) throw(`Part ${part.name} evaluated to both substruct and component! Only one of type/group must be defined!`);
-			if (part_group===null && part_type===null) throw(`Part ${part.name} evaluated to neither substruct or component! One of type/group must be defined!`);
+			if (part_group!==null && part_type!==null) throw new TypeXorError(`Part ${part.name} evaluated to both substruct and component. One of type/group must be non-null!`);
+			if (part_group===null && part_type===null) throw new TypeXorError(`Part ${part.name} evaluated to neither substruct or component. One of type/group must be non-null!`);
 
 			if (part_group) {
 				/* SUBSTRUCT */
 
 				// Validate
-				if (part_data===undefined) throw(`Substruct ${part.name} was not provided with context in input!`);
+				if (part_data===undefined) throw new KeyError(`Substruct ${part.name} was not provided with context in input!`);
 
 				// Write
 				if (part_rsize===SINGLE)	bits.push(part_group.__pack__(part_data));
@@ -163,7 +169,7 @@ export class InternalStruct {
 				/* COMPONENT */
 
 				// Validate
-				if (part_data===undefined && part.name!==null ) throw(`Component ${part.name} was not provided with data in input!`);
+				if (part_data===undefined && part.name!==null ) throw new KeyError(`Component ${part.name} was not provided with data in input!`);
 
 				// Write
 				if (part_rsize===SINGLE) {
@@ -200,9 +206,9 @@ export class InternalStruct {
 			const part_group  = (part.group===null) ? null : this.#ask(part.group);
 			let unpacked: any;
 
-			if (part_group!==null && part_type!==null) throw(`Part ${part.name} evaluated to both substruct and component! Only one of type/group must be defined!`);
-			if (part_group===null && part_type===null) throw(`Part ${part.name} evaluated to neither substruct or component! One of type/group must be defined!`);
-		
+			if (part_group!==null && part_type!==null) throw new TypeXorError(`Part ${part.name} evaluated to both substruct and component. One of type/group must be non-null!`);
+			if (part_group===null && part_type===null) throw new TypeXorError(`Part ${part.name} evaluated to neither substruct or component. One of type/group must be non-null!`);
+
 			if (part_group) {
 				/* SUBSTRUCT */
 
@@ -220,7 +226,7 @@ export class InternalStruct {
 				const size_bytes = part_fsize*DBYTES[part_type as number];
 				pointer += size_bytes;
 
-				if (pointer > data.length) throw(`Not enough data! (Attempted to access byte at index ${pointer})`);
+				if (pointer > data.length) throw new BufferError(`Not enough data! (Attempted to access byte at index ${pointer})`);
 				if (part.name !== null) {
 					unpacked = Unpack(part_type as number, data.slice(pointer-size_bytes, pointer), part_fsize, part.endian);
 					if (part_rsize === SINGLE && !DNARRAY[part_type as number]) [unpacked] = unpacked;
@@ -229,7 +235,7 @@ export class InternalStruct {
 
 			if (unpacked) this.#context[part.name as string] = unpacked;
 		}
-		
+
 		const target = Object.assign({}, this.#context);
 		this.#context = null;
 		return [target, pointer];

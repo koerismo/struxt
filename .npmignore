@@ -1,3 +1,5 @@
-/dist/
+/src/
 /node_modules/
+/tsconfig.json
+
 **/.DS_STORE

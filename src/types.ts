@@ -20,39 +20,45 @@ export type InternalPart = {
 	// Padding part type
 	name:	null,
 	type:	14,
-	group:	SharedStruct|ReturnsStruct|ReturnsNull|null,
+	group:	null,
 	size:	int|ReturnsInt,
 	endian:	boolean,
 }
 
-export type ExternalPart = {
-	// Padding
+export type ExternalPart =  {
+	// Default part type
+	name:	string,
+	type?:	int|ReturnsInt|ReturnsNull|null,
+	group?:	SharedStruct|ReturnsStruct|ReturnsNull|null,
+	size?:	int|ReturnsInt,
+	endian?:	boolean,
+} | {
+	// Padding part type
 	name?:		null,
-	size?:		int|ReturnsInt,
 	type:		14,
-} | {
-	// Regular (Only type)
-	name:		string,
 	size?:		int|ReturnsInt,
-	endian?:	boolean,
-
-	type:		int|ReturnsInt,
-	group?:		null|ReturnsNull,
-} | {
-	// Regular (Only group)
-	name:		string,
-	size?:		int|ReturnsInt,
-	endian?:	boolean,
-
-	type?:		null|ReturnsNull,
-	group:		SharedStruct|ReturnsStruct,
-} | {
-	// Regular (Both)
-	name:		string,
-	size?:		int|ReturnsInt,
-	endian?:	boolean,
-
-	type:		ReturnsNull|ReturnsInt,
-	group:		ReturnsNull|ReturnsStruct,
 }
 
+/** Generic error for byte buffer exceptions. */
+export function BufferError( msg:string ) {
+	this.message	= msg;
+	this.name		= 'BufferError';
+}
+
+/** Error for malformed Part keys. */
+export function KeyError( msg:string ) {
+	this.message	= msg;
+	this.name		= 'KeyError';
+}
+
+/** Error for non-xor component function-value parameter evaluation. */
+export function TypeXorError( msg:string ) {
+	this.message	= msg;
+	this.name		= 'TypeXorError';
+}
+
+/** Generic parser error. */
+export function ParseError( msg:string ) {
+	this.message	= msg;
+	this.name		= 'ParseError';
+}

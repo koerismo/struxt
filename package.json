@@ -1,0 +1,30 @@
+{
+	"name": "construc.ts",
+	"version": "1.2.0",
+	"description": "Low-level dynamic binary data structures for Javascript.",
+	"keywords": [ "struct", "binary", "transform", "parsing" ],
+	"type": "module",
+
+	"author": "koerismo",
+	"license": "MPL-2.0",
+	"bugs": { "url": "https://github.com/koerismo/struct.ts/issues" },
+	"homepage": "https://github.com/koerismo/struct.ts",
+
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"files": [ "dist/*" ],
+	"sideEffects": [ "./src/index.ts" ],
+
+	"scripts": {
+		"build": "tsc",
+		"test": "node ./test/run.js"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/koerismo/struct.ts.git"
+	},
+
+	"devDependencies": {
+		"typescript": "^4.9.4"
+	}
+}
