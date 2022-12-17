@@ -233,7 +233,7 @@ export class InternalStruct {
 				}
 			}
 
-			if (unpacked) this.#context[part.name as string] = unpacked;
+			if (unpacked !== undefined) this.#context[part.name as string] = unpacked;
 		}
 
 		const target = Object.assign({}, this.#context);

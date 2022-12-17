@@ -1,5 +1,7 @@
-import { BIG_ENDIAN, DTYPE as D, LITTLE_ENDIAN, Struct } from '../dist/index.js';
+import { BIG_ENDIAN, DTYPE as D, LITTLE_ENDIAN, Struct, SYSTEM_ENDIAN } from '../dist/index.js';
 import { deepStrictEqual, strictEqual } from 'assert/strict';
+
+const TEST_COUNT = 500;
 
 export const __name__ = 'pack/unpack';
 
@@ -22,13 +24,14 @@ function run_test( endian ) {
 		7: 1.2345677614212036,
 		8: 1.2345678,
 		9: new Uint8Array([0xff]),
-		10: '!',
-		11: true,
+		10: 'hello',
+		11: 1,
 	};
 
 	// LONG-FORM STRUCT DEFINITION
 	const _INIT_A = performance.mark('init-a');
-	const struct_a = new Struct();
+	for ( let i=0; i<TEST_COUNT; i++ ) {
+	var struct_a = new Struct();
 	struct_a.add({            type: D.PADDING,  endian: endian });
 	struct_a.add({ name: 0,   type: D.NULL,     endian: endian });
 	struct_a.add({ name: 1,   type: D.INT8,     endian: endian });
@@ -40,32 +43,38 @@ function run_test( endian ) {
 	struct_a.add({ name: 7,   type: D.FLOAT32,  endian: endian });
 	struct_a.add({ name: 8,   type: D.FLOAT64,  endian: endian });
 	struct_a.add({ name: 9,   type: D.CHAR,     endian: endian, size: 1 });
-	struct_a.add({ name: 10,  type: D.STR,      endian: endian, size: 1 });
+	struct_a.add({ name: 10,  type: D.STR,      endian: endian, size: 5 });
 	struct_a.add({ name: 11,  type: D.BOOL,     endian: endian });
+	}
 
 	// SHORT-FORM STRUCT DEFINITION
 	const _INIT_B = performance.mark('init-b');
-	const struct_b = new Struct((endian?'<':'>')+`
-		xX	// Null/padding
-		bB	// Char
-		hH	// Double
-		iI	// Int
-		fd	// Floats
-		1c	// Char[]
-		1s	// String
-		?	// Boolean `);
-
+	for ( let i=0; i<TEST_COUNT; i++ ) {
+	var struct_b = new Struct(
+		(endian?'<':'>')+`
+		xX
+		bB
+		hH
+		iI
+		fd
+		1c
+		5s
+		?`);
+	}
 
 	// PACK DATA
 	const _TEST_PACK = performance.mark('test-pack');
-	const bytes_a = struct_a.pack(pack_payload);
-	const bytes_b = struct_b.pack(pack_payload);
-
+	for ( let i=0; i<TEST_COUNT; i++ ) {
+	var bytes_a = struct_a.pack(pack_payload);
+	var bytes_b = struct_b.pack(pack_payload);
+	}
 
 	// UNPACK DATA
 	const _TEST_UNPACK = performance.mark('test-unpack');
-	const unpacked_a = struct_a.unpack(bytes_a);
-	const unpacked_b = struct_b.unpack(bytes_a);
+	for ( let i=0; i<TEST_COUNT; i++ ) {
+	var unpacked_a = struct_a.unpack(bytes_a);
+	var unpacked_b = struct_b.unpack(bytes_a);
+	}
 	const _END = performance.mark('end');
 
 
@@ -76,10 +85,10 @@ function run_test( endian ) {
 	console.log([
 		{
 			'endian': endian?'little':'big',
-			'init A':performance.measure('', 'init-a', 'init-b').duration,
-			'init B':performance.measure('', 'init-b', 'test-pack').duration,
-			'pack':performance.measure('', 'test-pack', 'test-unpack').duration,
-			'unpack':performance.measure('', 'test-unpack', 'end').duration,
+			'init A':performance.measure('', 'init-a', 'init-b').duration/TEST_COUNT,
+			'init B':performance.measure('', 'init-b', 'test-pack').duration/TEST_COUNT,
+			'pack':performance.measure('', 'test-pack', 'test-unpack').duration/TEST_COUNT,
+			'unpack':performance.measure('', 'test-unpack', 'end').duration/TEST_COUNT,
 		}
 	]);
 

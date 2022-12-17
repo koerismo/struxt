@@ -101,8 +101,36 @@ export const SYSTEM_ENDIAN = (new Uint8Array(new Uint16Array([255]).buffer)[0] =
 export const BIG_ENDIAN = false,
              LITTLE_ENDIAN = true;
 
+function SwapOrder( target:Uint8Array, size:int ): Uint8Array {
+	if ( size <= 1 ) return target;
+
+	for ( let i=0; i<target.length; i++ ) {
+		const mod_i = i%size;
+		const opp_i = i+size - 2*mod_i - 1;
+		if (mod_i+1 >= size/2) continue;
+
+		const tmp = target[i];
+		target[i] = target[opp_i], target[opp_i] = tmp;
+	}
+
+	return target;
+}
+
 /** Datatype pack function, used internally by Construct. */
 export function Pack( type:int, data:ArrayLike<number>|any|null, size:int, endianness:boolean ): Uint8Array {
+	const bytes = _Pack(type, data, size);
+	if (endianness !== SYSTEM_ENDIAN) SwapOrder(bytes, DBYTES[type]);
+	return bytes;
+}
+
+/** Datatype pack function, used internally by Construct. */
+export function Unpack( type:int, data:Uint8Array, size:number, endianness:boolean ): ArrayLike<number>|any|null {
+	const bytes = new Uint8Array(data);
+	if (endianness !== SYSTEM_ENDIAN) SwapOrder(bytes, DBYTES[type]);
+	return _Unpack(type, bytes, size);
+}
+
+function _Pack( type:int, data:ArrayLike<number>|any|null, size:int ): Uint8Array {
 
 	// Switch/case doesn't work for this, because javascript
 	// can't handle duplicate const/let definitions even between cases.
@@ -122,61 +150,31 @@ export function Pack( type:int, data:ArrayLike<number>|any|null, size:int, endia
 	/* 16-BIT INTEGER */
 
 	if (type === DTYPE.UINT16) {
-		if (endianness === SYSTEM_ENDIAN) return new Uint8Array(new Uint16Array(data).buffer);
-
-		let arr_out = new Uint8Array(data.length*2);
-		let dataview = new DataView(arr_out.buffer);
-		for ( let i=0; i<data.length; i++ ) dataview.setUint16(i*2, data[i], endianness);
-		return arr_out;
+		return new Uint8Array(new Uint16Array(data).buffer);
 	}
 
 	if (type === DTYPE.INT16) {
-		if (endianness === SYSTEM_ENDIAN) return new Uint8Array(new Int16Array(data).buffer);
-
-		let arr_out = new Uint8Array(data.length*2);
-		let dataview = new DataView(arr_out.buffer);
-		for ( let i=0; i<data.length; i++ ) dataview.setInt16(i*2, data[i], endianness);
-		return arr_out;
+		return new Uint8Array(new Int16Array(data).buffer);
 	}
 
 	/* 32-BIT INTEGER */
 
 	if (type === DTYPE.UINT32) {
-		if (endianness === SYSTEM_ENDIAN) return new Uint8Array(new Uint32Array(data).buffer);
-
-		let arr_out = new Uint8Array(data.length*4);
-		let dataview = new DataView(arr_out.buffer);
-		for ( let i=0; i<data.length; i++ ) dataview.setUint32(i*4, data[i], endianness);
-		return arr_out;
+		return new Uint8Array(new Uint32Array(data).buffer);
 	}
 
 	if (type === DTYPE.INT32) {
-		if (endianness === SYSTEM_ENDIAN) return new Uint8Array(new Int32Array(data).buffer);
-
-		let arr_out = new Uint8Array(data.length*4);
-		let dataview = new DataView(arr_out.buffer);
-		for ( let i=0; i<data.length; i++ ) dataview.setInt32(i*4, data[i], endianness);
-		return arr_out;
+		return new Uint8Array(new Int32Array(data).buffer);
 	}
 
 	/* FLOATS */
 
 	if (type === DTYPE.FLOAT32) {
-		if (endianness === SYSTEM_ENDIAN) return new Uint8Array(new Float32Array(data).buffer);
-
-		let arr_out = new Uint8Array(data.length*4);
-		let dataview = new DataView(arr_out.buffer);
-		for ( let i=0; i<data.length; i++ ) dataview.setFloat32(i*4, data[i], endianness);
-		return arr_out;
+		return new Uint8Array(new Float32Array(data).buffer);
 	}
 
 	if (type === DTYPE.FLOAT64) {
-		if (endianness === SYSTEM_ENDIAN) return new Uint8Array(new Float64Array(data).buffer);
-
-		let arr_out = new Uint8Array(data.length*8);
-		let dataview = new DataView(arr_out.buffer);
-		for ( let i=0; i<data.length; i++ ) dataview.setFloat64(i*8, data[i], endianness);
-		return arr_out;
+		return new Uint8Array(new Float64Array(data).buffer);
 	}
 
 	/* STRINGS */
@@ -210,8 +208,7 @@ export function Pack( type:int, data:ArrayLike<number>|any|null, size:int, endia
 	throw('Unrecognized datatype '+type+'!');
 }
 
-/** Datatype pack function, used internally by Construct. */
-export function Unpack( type:int, data:Uint8Array, size:number, endianness:boolean ): ArrayLike<number>|any|null {
+function _Unpack( type:int, data:Uint8Array, size:number ): ArrayLike<number>|any|null {
 
 	// @ts-ignore
 	if (!(data instanceof Uint8Array)) throw new TypeError(`Unpack expected Uint8Array, but received ${data.constructor.name} instead!`);
@@ -230,61 +227,31 @@ export function Unpack( type:int, data:Uint8Array, size:number, endianness:boole
 	/* 16-BIT INTEGER */
 
 	if (type === DTYPE.UINT16) {
-		if (endianness === SYSTEM_ENDIAN) return new Uint16Array(data.buffer);
-
-		let arr_out = new Uint16Array(size);
-		let dataview = new DataView(data.buffer);
-		for ( let i=0; i<size; i++ ) arr_out[i] = dataview.getUint16(i*2, endianness);
-		return arr_out;
+		return new Uint16Array(data.buffer);
 	}
 
 	if (type === DTYPE.INT16) {
-		if (endianness === SYSTEM_ENDIAN) return new Int16Array(data.buffer);
-
-		let arr_out = new Int16Array(size);
-		let dataview = new DataView(data.buffer);
-		for ( let i=0; i<size; i++ ) arr_out[i] = dataview.getInt16(i*2, endianness);
-		return arr_out;
+		return new Int16Array(data.buffer);
 	}
 
 	/* 32-BIT INTEGER */
 
 	if (type === DTYPE.UINT32) {
-		if (endianness === SYSTEM_ENDIAN) return new Uint32Array(data.buffer);
-
-		let arr_out = new Uint32Array(size);
-		let dataview = new DataView(data.buffer);
-		for ( let i=0; i<size; i++ ) arr_out[i] = dataview.getUint32(i*4, endianness);
-		return arr_out;
+		return new Uint32Array(data.buffer);
 	}
 
 	if (type === DTYPE.INT32) {
-		if (endianness === SYSTEM_ENDIAN) return new Int32Array(data.buffer);
-
-		let arr_out = new Int32Array(size);
-		let dataview = new DataView(data.buffer);
-		for ( let i=0; i<size; i++ ) arr_out[i] = dataview.getInt16(i*4, endianness);
-		return arr_out;
+		return new Int32Array(data.buffer);
 	}
 
 	/* FLOATS */
 
 	if (type === DTYPE.FLOAT32) {
-		if (endianness === SYSTEM_ENDIAN) return new Float32Array(data.buffer);
-
-		let arr_out = new Float32Array(size);
-		let dataview = new DataView(data.buffer);
-		for ( let i=0; i<size; i++ ) arr_out[i] = dataview.getFloat32(i*4, endianness);
-		return arr_out;
+		return new Float32Array(data.buffer);
 	}
 
 	if (type === DTYPE.FLOAT64) {
-		if (endianness === SYSTEM_ENDIAN) return new Float64Array(data.buffer);
-
-		let arr_out = new Float64Array(size);
-		let dataview = new DataView(data.buffer);
-		for ( let i=0; i<size; i++ ) arr_out[i] = dataview.getFloat64(i*8, endianness);
-		return arr_out;
+		 return new Float64Array(data.buffer);
 	}
 
 	/* STRINGS */
