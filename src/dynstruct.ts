@@ -127,14 +127,14 @@ export class InternalStruct {
 		return attr;
 	}
 
-	#askint( attr:any|Function ): int {
+	#askint( attr:any|Function, name:string ): int {
 		if ( typeof attr === 'function' ) {
 			attr = attr();
-			if ( typeof attr !== 'number' ) throw new TypeError(`Expected parameter function to return integer, but got ${typeof attr} instead!`);
-			if ( attr%0 ) throw new TypeError(`Expected parameter function to return integer, but got float instead!`);
+			if ( typeof attr !== 'number' ) throw new TypeError(`Expected function value of parameter "${name}" to return integer, but got ${typeof attr} instead!`);
+			if ( attr%1 ) throw new TypeError(`Expected function value of parameter "${name}" to return integer, but got float instead!`);
 		};
-		if ( typeof attr !== 'number' ) throw new TypeError(`Expected integer in parameter, but found ${typeof attr} instead!`);
-		if ( attr%0 ) throw new TypeError(`Expected integer in parameter, but found float instead!`);
+		if ( typeof attr !== 'number' ) throw new TypeError(`Expected integer value for parameter "${name}", but found ${typeof attr} instead!`);
+		if ( attr%1 ) throw new TypeError(`Expected integer value for parameter "${name}", but found float instead!`);
 		return attr;
 	}
 
@@ -145,7 +145,8 @@ export class InternalStruct {
 		for ( let i=0; i<this.#parts.length; i++ ) {
 			const part = this.#parts[i];
 
-			const part_rsize  = this.#askint(part.size);
+			try {
+			const part_rsize  = this.#askint(part.size, 'size');
 			const part_fsize  = (part_rsize===SINGLE) ? 1 : part_rsize;
 			const part_type   = (part.type===null) ? null : this.#ask(part.type);
 			const part_group  = (part.group===null) ? null : this.#ask(part.group);
@@ -172,12 +173,11 @@ export class InternalStruct {
 				if (part_data===undefined && part.name!==null ) throw new KeyError(`Component ${part.name} was not provided with data in input!`);
 
 				// Write
-				if (part_rsize===SINGLE) {
-					if (DNARRAY[part_type as number])	bits.push(Pack(part_type as number, part_data, part_fsize, part.endian));
-					else								bits.push(Pack(part_type as number, [part_data], part_fsize, part.endian));
-				}
+				if (part_rsize===SINGLE && !DNARRAY[part_type as number])
+						bits.push(Pack(part_type as number, [part_data], part_fsize, part.endian));
 				else	bits.push(Pack(part_type as number, part_data, part_fsize, part.endian));
 			}
+			} catch(error) { console.log(`An error occurred while processing part ${part.name}:`); throw(error); }
 		}
 
 		let target_size = 0;
@@ -200,9 +200,10 @@ export class InternalStruct {
 		for ( let i=0; i<this.#parts.length; i++ ) {
 			const part = this.#parts[i];
 
-			const part_rsize  = this.#askint(part.size);
+			try {
+			const part_rsize  = this.#askint(part.size, 'size');
 			const part_fsize  = (part_rsize===SINGLE) ? 1 : part_rsize;
-			const part_type   = (part.type===null) ? null : this.#askint(part.type);
+			const part_type   = (part.type===null) ? null : this.#askint(part.type, 'type');
 			const part_group  = (part.group===null) ? null : this.#ask(part.group);
 			let unpacked: any;
 
@@ -234,6 +235,7 @@ export class InternalStruct {
 			}
 
 			if (unpacked !== undefined) this.#context[part.name as string] = unpacked;
+			} catch(error) { console.log(`An error occurred while processing part ${part.name}:`); throw(error); }
 		}
 
 		const target = Object.assign({}, this.#context);

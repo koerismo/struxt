@@ -101,13 +101,14 @@ export const SYSTEM_ENDIAN = (new Uint8Array(new Uint16Array([255]).buffer)[0] =
 export const BIG_ENDIAN = false,
              LITTLE_ENDIAN = true;
 
+/** Reverses the items of an array at an interval of (size). The input array's length must be a multiple of (size). */
 function SwapOrder( target:Uint8Array, size:int ): Uint8Array {
 	if ( size <= 1 ) return target;
 
 	for ( let i=0; i<target.length; i++ ) {
 		const mod_i = i%size;
 		const opp_i = i+size - 2*mod_i - 1;
-		if (mod_i+1 >= size/2) continue;
+		if (mod_i+1 >= size/2 || opp_i >= target.length) continue;
 
 		const tmp = target[i];
 		target[i] = target[opp_i], target[opp_i] = tmp;
