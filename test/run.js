@@ -1,5 +1,6 @@
 const tests = [
-	await import('./test.basic.js')
+	await import('./test.basic.js'),
+	await import('./test.dynamics.js'),
 ];
 
 console.log('Running tests...');
@@ -9,4 +10,4 @@ for ( let i=0; i<tests.length; i++ ) {
 	tests[i].default();
 }
 const mark_end = performance.now();
-console.log(`Finished in ${(mark_end-mark_start)}ms!`)
+console.log(`Finished in ${(mark_end-mark_start)}ms!`);

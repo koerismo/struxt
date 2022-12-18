@@ -20,7 +20,6 @@ export const DTYPE = {
 
 	FLOAT32:	8,
 	FLOAT64:	9,
-//	FLOAT128:	10,	(NOT IMPLEMENTED)
 
 	CHAR:		11,
 	STR:		12,
@@ -47,7 +46,6 @@ export const DBYTES = {
 
 	8:		4,		// FLOAT32
 	9:		8,		// FLOAT64
-//	10:		16,		// FLOAT128 (NOT IMPLEMENTED)
 
 	11:		1,		// CHAR
 	12:		1,		// STR

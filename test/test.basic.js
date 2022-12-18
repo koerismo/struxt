@@ -1,4 +1,4 @@
-import { BIG_ENDIAN, DTYPE as D, LITTLE_ENDIAN, Struct, SYSTEM_ENDIAN } from '../dist/index.js';
+import { DTYPE as D, LITTLE_ENDIAN, BIG_ENDIAN, Struct } from '../dist/index.js';
 import { deepStrictEqual, strictEqual } from 'assert/strict';
 
 const TEST_COUNT = 500;
@@ -82,7 +82,7 @@ function run_test( endian ) {
 	deepStrictEqual( unpacked_a, unpacked_b, 'Long-form and short-form structs do not produce the same results in unpack!');
 	deepStrictEqual( unpacked_a, pack_payload, 'Input and output data do not match!');
 
-	console.log([
+	/* console.log([
 		{
 			'endian': endian?'little':'big',
 			'init A':performance.measure('', 'init-a', 'init-b').duration/TEST_COUNT,
@@ -90,7 +90,7 @@ function run_test( endian ) {
 			'pack':performance.measure('', 'test-pack', 'test-unpack').duration/TEST_COUNT,
 			'unpack':performance.measure('', 'test-unpack', 'end').duration/TEST_COUNT,
 		}
-	]);
+	]); */
 
 	return;
 }

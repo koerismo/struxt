@@ -17,7 +17,8 @@
 
 	"scripts": {
 		"build": "tsc",
-		"test": "node ./test/run.js"
+		"test": "node ./test/run.js",
+		"publish": "npm run test && npm publish"
 	},
 	"repository": {
 		"type": "git",
