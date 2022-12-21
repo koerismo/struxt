@@ -1,8 +1,8 @@
 {
-	"name": "construc.ts",
+	"name": "struxt",
 	"version": "1.2.0",
 	"description": "Low-level dynamic binary data structures for Javascript.",
-	"keywords": [ "struct", "binary", "transform", "parsing" ],
+	"keywords": [ "struct", "binary", "transform", "parsing", "lightweight" ],
 	"type": "module",
 
 	"author": "koerismo",

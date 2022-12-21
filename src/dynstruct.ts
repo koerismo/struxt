@@ -203,7 +203,7 @@ export class InternalStruct {
 			try {
 			const part_rsize  = this.#askint(part.size, 'size');
 			const part_fsize  = (part_rsize===SINGLE) ? 1 : part_rsize;
-			const part_type   = (part.type===null) ? null : this.#askint(part.type, 'type');
+			const part_type   = (part.type===null) ? null : this.#ask(part.type);
 			const part_group  = (part.group===null) ? null : this.#ask(part.group);
 			let unpacked: any;
 
@@ -224,13 +224,13 @@ export class InternalStruct {
 			else {
 				/* COMPONENT */
 
-				const size_bytes = part_fsize*DBYTES[part_type as number];
+				const size_bytes = part_fsize*DBYTES[part_type];
 				pointer += size_bytes;
 
 				if (pointer > data.length) throw new BufferError(`Not enough data! (Attempted to access byte at index ${pointer})`);
-				if (part.name !== null) {
-					unpacked = Unpack(part_type as number, data.slice(pointer-size_bytes, pointer), part_fsize, part.endian);
-					if (part_rsize === SINGLE && !DNARRAY[part_type as number]) [unpacked] = unpacked;
+				if (part.type !== DTYPE.PADDING) {
+					unpacked = Unpack(part_type, data.slice(pointer-size_bytes, pointer), part_fsize, part.endian);
+					if (part_rsize === SINGLE && !DNARRAY[part_type]) [unpacked] = unpacked;
 				}
 			}
 
