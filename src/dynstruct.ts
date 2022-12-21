@@ -21,6 +21,9 @@ export class InternalStruct {
 	// #static: boolean = true;
 	// #static_size: int = 0;
 
+	/**
+	 * @param struct See API reference.
+	 */
 	constructor( struct?:string|ExternalPart[] ) {
 		const parents = new WeakMap();
 		const sizes = new WeakMap();
@@ -98,12 +101,22 @@ export class InternalStruct {
 		}
 	}
 
-	eval( name:string ) {
+	/**
+	 * Retrieves the value of a component in this Struct.
+	 * @param name The component to evaluate.
+	 * @returns The resulting value, or undefined if the component has not been unpacked yet.
+	 */
+	eval( name:string ): any|undefined {
 		if (!this.#context) throw('Attempted to access Struct context outside of pack/unpack routine!');
 		return this.#context[name];
 	}
 
-	add( token:ExternalPart ) {
+	/**
+	 * Appends a new component to this Struct.
+	 * @param token The component to append.
+	 * @returns this
+	 */
+	add( token:ExternalPart ): ThisType<Struct> {
 
 		const norm_group  = ('group'  in token && !!token.group) ? token.group : null,
 		      norm_type   = ('type'   in token && token.type   !== null && token.type   !== undefined) ? token.type : null,
@@ -120,6 +133,8 @@ export class InternalStruct {
 		if (part.type !== DTYPE.PADDING && part.name === null) throw(`Part with datatype ${part.type} is missing name!`);
 		if (norm_group === null && norm_type === null) throw('Part has neither group or type defined!');
 		this.#parts.push(part as InternalPart);
+
+		return this;
 	}
 
 	#ask( attr:any|Function ): any {
@@ -138,6 +153,7 @@ export class InternalStruct {
 		return attr;
 	}
 
+	/** @private */
 	__pack__( data:Object ): Uint8Array {
 		this.#context = Object.assign({}, data);
 
@@ -194,6 +210,7 @@ export class InternalStruct {
 		return target;
 	}
 
+	/** @private */
 	__unpack__( data:Uint8Array, pointer=0 ): [Object, int] {
 		this.#context = {};
 
@@ -249,10 +266,20 @@ export class Struct extends InternalStruct {
 		super(struct);
 	}
 
+	/**
+	 * Packs the values of an object into a buffer via this Struct's layout.
+	 * @param data The data to pack into the buffer.
+	 * @returns An array of bytes.
+	 */
 	pack( data:Object ) {
 		return super.__pack__(data);
 	}
 
+	/**
+	 * Unpacks the values from a buffer into an object via this Struct's layout.
+	 * @param data An array of bytes.
+	 * @returns An object containing the unpacked values.
+	 */
 	unpack( data:Uint8Array ) {
 		return super.__unpack__(data)[0];
 	}
