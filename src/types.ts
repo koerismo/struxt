@@ -4,9 +4,9 @@ import { Struct, InternalStruct } from './dynstruct.js';
 export type int = number;
 
 export type SharedStruct = Struct|InternalStruct;
-export type ReturnsInt = () => int;
-export type ReturnsStruct = () => SharedStruct;
-export type ReturnsNull = () => null;
+export type ReturnsInt = (self: Struct) => int;
+export type ReturnsStruct = (self: Struct) => SharedStruct;
+export type ReturnsNull = (self: Struct) => null;
 
 /** Normalized Part interface, used internally. */
 export type InternalPart = {

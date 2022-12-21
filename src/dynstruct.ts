@@ -123,13 +123,13 @@ export class InternalStruct {
 	}
 
 	#ask( attr:any|Function ): any {
-		if ( typeof attr === 'function' ) return attr();
+		if ( typeof attr === 'function' ) return attr(this);
 		return attr;
 	}
 
 	#askint( attr:any|Function, name:string ): int {
 		if ( typeof attr === 'function' ) {
-			attr = attr();
+			attr = attr(this);
 			if ( typeof attr !== 'number' ) throw new TypeError(`Expected function value of parameter "${name}" to return integer, but got ${typeof attr} instead!`);
 			if ( attr%1 ) throw new TypeError(`Expected function value of parameter "${name}" to return integer, but got float instead!`);
 		};
