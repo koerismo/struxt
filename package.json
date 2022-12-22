@@ -1,6 +1,6 @@
 {
 	"name": "struxt",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"description": "Low-level dynamic binary data structures for Javascript.",
 	"keywords": [ "struct", "binary", "transform", "parsing", "lightweight" ],
 	"type": "module",
