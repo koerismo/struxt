@@ -1,5 +1,7 @@
-import Tap from 'tap';
 import { DTYPE as D, Struct, NULLSTOP } from '../dist/index.js';
+import { deepStrictEqual, strictEqual } from 'assert';
+
+it( 'Creates a new Struct object containing null-terminated values' , done => {
 
 const st = new Struct([
 	{ magic: 'IDENT', type: D.STR, size: 5 },
@@ -22,5 +24,7 @@ const input = {
 
 const packed = st.pack(input);
 const unpacked = st.unpack(packed);
+deepStrictEqual( unpacked, input );
 
-Tap.strictSame( unpacked, input );
+done();
+});

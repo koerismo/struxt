@@ -2,11 +2,47 @@
 ### *Low-level dynamic binary data structures for Javascript.*
 
 ## Overview
-Struxt is a lightweight (25kb unminified) library for packing and unpacking binary data structures in javascript.
+Struxt is a lightweight library for packing and unpacking binary data structures in javascript.
 
 # Examples
 
-## String-based struct creation
+## Struct creation
+```js
+import { Struct, DTYPE as D } from 'struxt';
+
+var myStruct = new Struct([
+	{ name: 'a', type: D.INT32, size: 4 },
+	{ name: 'b', type: D.BOOL,  size: 2 },
+	{ name: 'c', group: new Struct([
+		{ name: 'd', type: D.UINT32 }
+	]) }
+]);
+
+var data = myStruct.pack({
+	a: [1, 2, 3, 4],
+	b: [true, false],
+	c: { d: 1234 },
+});
+
+console.log(myStruct.unpack(data));
+// { a: [1, 2, 3, 4], b: [true, false], c: { d: 1234 } }
+```
+
+## Dynamic structures
+```js
+import { Struct, DTYPE as D } from 'struxt';
+
+var myStruct = new Struct();
+myStruct.add({ name: 'str-length', type: D.UINT16 });
+myStruct.add({ name: 'str', type: D.STR, size: () => myStruct.eval('str-length') });
+
+var data = myStruct.pack({ 'str-length': 5, 'str': 'hello' });
+
+console.log(myStruct.unpack(data));
+// { str-length: 5, str: 'hello' }
+```
+
+## Python-style constructors
 ```js
 import { Struct } from 'struxt';
 
@@ -20,42 +56,6 @@ var data = myStruct.pack([
 console.log(myStruct.unpack(data));
 // { 0: [1, 2, 3, 4], 1: [true, false], 2: { 0: 1234 } }
 ```
-
-## Functional struct creation
-```js
-import { Struct, DTYPE as D } from 'struxt';
-
-var mySubstruct = new Struct();
-mySubstruct.add({ name: 'value', type: D.UINT32 });
-
-var myStruct = new Struct();
-myStruct.add({ name: 'a', type: D.INT32, size: 4 });
-myStruct.add({ name: 'b', type: D.BOOL, size: 2 });
-myStruct.add({ name: 'c', group: mySubstruct });
-
-var data = myStruct.pack({
-	a: [1, 2, 3, 4],
-	b: [true, false],
-	c: { value: 1234 },
-});
-
-console.log(myStruct.unpack(data));
-// { a: [1, 2, 3, 4], b: [true, false], c: { value: 1234 } }
-```
-
-## Dynamic struct creation
-```js
-import { Struct, DTYPE as D } from 'struxt';
-
-var myStruct = new Struct();
-myStruct.add({ name: 'str-length', type: D.UINT16 });
-myStruct.add({ name: 'str', type: D.STR, size: () => myStruct.eval('str-length') });
-
-var data = myStruct.pack({ 'str-length': 5, 'str': 'hello' });
-console.log(myStruct.unpack(data));
-// { str-length: 5, str: 'hello' }
-```
-
 
 
 # API Documentation

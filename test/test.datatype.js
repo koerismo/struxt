@@ -1,5 +1,7 @@
 import { DTYPE as D, Struct, SINGLE } from '../dist/index.js';
-import Tap from 'tap';
+import { deepStrictEqual, strictEqual } from 'assert';
+
+it( 'Packs/unpacks every datatype' , done => {
 
 const data_types = [
 	D.INT8,
@@ -45,7 +47,6 @@ const data_inputs = [
 	[ [null, null, null], null ],
 ];
 
-console.log('Constructing...');
 const st = new Struct();
 
 st.add({
@@ -83,11 +84,10 @@ for ( let i=0; i<data_types.length; i++ ) {
 	}
 }
 
-console.log('\nPacking...');
 const packed = st.pack(input);
 
-console.log('\nUnpacking...');
 const unpacked = st.unpack(packed);
+deepStrictEqual( unpacked, input );
 
-Tap.strictSame( unpacked, input );
-Tap.end();
+done();
+});

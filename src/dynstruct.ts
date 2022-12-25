@@ -132,35 +132,29 @@ export class InternalStruct {
 		let part: InternalComponent = {
 			name: undefined,
 			magic: undefined,
-			type: null,
+			type: token.type ?? null,
 			group: null,
 			size: token.size ?? SINGLE,
 			endian: null,
 		};
 
-		if ( token.type === DTYPE.PADDING ) {
-			part.type = DTYPE.PADDING;
-		}
-
-		else if ( 'magic' in token ) {
+		if ( 'magic' in token ) {
 			if ('group' in token)			throw new KeyError( 'Magic substructs have not been implemented at this time!' );
 			if (token.type == undefined)	throw new KeyError( 'Signature token must have type defined!' );
-			if ( typeof token.type === 'number' && typeof token.size === 'number' )
-				if (!VerifyType(token.type, token.magic, token.size)) throw new KeyError( 'Magic value does not match component type. This will always return false!' );
+			if ( typeof token.type === 'number' && typeof part.size === 'number' )
+				if (!VerifyType(token.type, token.magic, part.size)) throw new KeyError( 'Magic value does not match component type. This will always return false!' );
 
 			part.magic = token.magic;
-			part.type = token.type;
 			part.endian = token.endian ?? LITTLE_ENDIAN;
 		}
 
-		else {
-			if (!( 'name' in token )) throw new KeyError( 'Component must have a name if not magic or padding!' );
+		else if ( part.type !== DTYPE.PADDING ) {
+			if (!( 'name' in token ) || token.name === undefined) throw new KeyError( 'Component must have a name if not magic or padding!' );
 			if ( token.type == null && token.group == null ) throw new KeyError( 'Component type or group must be defined!' );
 			if ( token.type != null && typeof token.type !== 'function' && token.group != null && typeof token.group !== 'function' )
 				throw new KeyError( 'Component type and group cannot both be defined as non-functions!' );
 
 			part.name = token.name;
-			part.type = token.type;
 			part.group = token.group;
 			part.endian = token.endian ?? LITTLE_ENDIAN;
 		}
@@ -289,8 +283,8 @@ export class InternalStruct {
 
 			// Standard component type
 			if ( part.name !== undefined ) {
-				if (part_group!=null && part_type!=null) throw new TypeXorError(`Part ${part.name} evaluated to both substruct and component. One of type/group must be non-null!`);
-				if (part_group==null && part_type==null) throw new TypeXorError(`Part ${part.name} evaluated to neither substruct or component. One of type/group must be non-null!`);
+				if (part_group!=null && part_type!=null) throw new TypeXorError(`Part ${part.name} resolved to both substruct and component. One of type/group must be non-null!`);
+				if (part_group==null && part_type==null) throw new TypeXorError(`Part ${part.name} resolved to neither substruct or component. One of type/group must be non-null!`);
 			}
 
 			// Magic component type
@@ -317,7 +311,7 @@ export class InternalStruct {
 			}
 
 			// Padding component type
-			else if ( part.type === DTYPE.PADDING ) {
+			else if ( part_type === DTYPE.PADDING ) {
 				pointer += part_size;
 				continue;
 			}

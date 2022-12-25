@@ -2,6 +2,6 @@
 /test/
 /node_modules/
 /tsconfig.json
-/.nyc_output/
+/coverage/
 
 **/.DS_STORE
