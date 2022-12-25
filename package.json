@@ -1,8 +1,8 @@
 {
 	"name": "struxt",
-	"version": "1.2.1",
+	"version": "1.2.2",
 	"description": "Low-level dynamic binary data structures for Javascript.",
-	"keywords": [ "struct", "binary", "transform", "parsing", "lightweight" ],
+	"keywords": [ "struct", "binary", "data", "parsing", "lightweight" ],
 	"type": "module",
 
 	"author": "koerismo",
@@ -17,7 +17,7 @@
 
 	"scripts": {
 		"build": "tsc",
-		"test": "node ./test/run.js",
+		"test": "tap",
 		"publish": "npm run test && npm publish"
 	},
 	"repository": {
@@ -26,6 +26,7 @@
 	},
 
 	"devDependencies": {
+		"tap": "^16.3.2",
 		"typescript": "^4.9.4"
 	}
 }

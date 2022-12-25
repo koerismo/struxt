@@ -85,19 +85,24 @@ console.log(myStruct.unpack(data));
 | `LITTLE_ENDIAN`|  `<` |   | Little-endian byte order
 |                |      |   |
 |        `SINGLE`|      |   | Default component size
+|      `NULLSTOP`|      |   | Null-terminated component size
 
 ## Component Interface
 ```ts
 type ExternalPart = {
-    name:    string;
-    type:    int     | ReturnsInt    | ReturnsNull | null | undefined;
-    group:   Struct  | ReturnsStruct | ReturnsNull | null | undefined;
-    size:    int     | ReturnsInt    | undefined;
-    endian:  boolean | undefined;
+    name:    string,
+    type?:   int     | ReturnsInt    | ReturnsNull | null,
+    group?:  Struct  | ReturnsStruct | ReturnsNull | null,
+    size?:   int     | ReturnsInt,
+    endian?: boolean,
 } | {
-    name:    null | undefined;
-    type:    DTYPE.PADDING;
-    size:    int | ReturnsInt | undefined;
+    magic:   any,
+    type:    int     | ReturnsInt,
+    size?:   int     | ReturnsInt,
+    endian?: boolean,
+} | {
+    type:    DTYPE.PADDING,
+    size?:   int | ReturnsInt,
 };
 ```
 

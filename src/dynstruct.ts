@@ -1,30 +1,41 @@
-import { DTYPE, DBYTES, DNARRAY, Pack, Unpack, SINGLE, SYSTEM_ENDIAN, DSHORT, LITTLE_ENDIAN, BIG_ENDIAN } from './datatype.js';
-import { InternalPart, ExternalPart, SharedStruct, int, KeyError, TypeXorError, BufferError, ParseError } from './types.js';
+import { DTYPE, DBYTES, DNARRAY, Pack, Unpack, SINGLE, NULLSTOP, SYSTEM_ENDIAN, DSHORT, LITTLE_ENDIAN, BIG_ENDIAN, VerifyType } from './datatype.js';
+import { InternalComponent, Component, SharedStruct, int } from './types.js';
 
+/** Generic error for byte buffer exceptions. */
+export function BufferError( msg:string ) {
+	this.message	= msg;
+	this.name		= 'BufferError';
+}
 
-// type DataTarget = Object|ArrayLike<any>|Map<string,any>;
-// interface StructDataOptions {
-// 	make:	() => DataTarget,
-// 	get:	( target:DataTarget, id:int, name:string ) => any,
-// 	set:	( target:DataTarget, value:any, id:int, name:string ) => void,
-// }
+/** Error for malformed Part keys. */
+export function KeyError( msg:string ) {
+	this.message	= msg;
+	this.name		= 'KeyError';
+}
 
+/** Error for non-xor component function-value parameter evaluation. */
+export function TypeXorError( msg:string ) {
+	this.message	= msg;
+	this.name		= 'TypeXorError';
+}
+
+/** Generic parser error. */
+export function ParseError( msg:string ) {
+	this.message	= msg;
+	this.name		= 'ParseError';
+}
 
 /* Complex Struct Class */
 
 export class InternalStruct {
-	#parts: InternalPart[] = [];
-	#map: {[key: string]: InternalPart} = {};
+	#parts: InternalComponent[] = [];
+	#map: {[key: string]: InternalComponent} = {};
 	#context: {}|null = null;
-	// get __parts__() { return this.#parts };
-
-	// #static: boolean = true;
-	// #static_size: int = 0;
 
 	/**
 	 * @param struct See API reference.
 	 */
-	constructor( struct?:string|ExternalPart[] ) {
+	constructor( struct?:string|Component[] ) {
 		const parents = new WeakMap();
 		const sizes = new WeakMap();
 		const indices = new WeakMap();
@@ -116,24 +127,45 @@ export class InternalStruct {
 	 * @param token The component to append.
 	 * @returns this
 	 */
-	add( token:ExternalPart ): ThisType<Struct> {
+	add( token:Component ): ThisType<Struct> {
 
-		const norm_group  = ('group'  in token && !!token.group) ? token.group : null,
-		      norm_type   = ('type'   in token && token.type   !== null && token.type   !== undefined) ? token.type : null,
-		      norm_endian = ('endian' in token && token.endian !== null && token.endian !== undefined && norm_type) ? token.endian : null;
+		let part: InternalComponent = {
+			name: undefined,
+			magic: undefined,
+			type: null,
+			group: null,
+			size: token.size ?? SINGLE,
+			endian: null,
+		};
 
-		const part = {
-			name:	token.name ?? null,
-			size:	token.size ?? SINGLE,
-			endian:	norm_endian ?? LITTLE_ENDIAN,
-			group:	norm_group,
-			type:	norm_type,
+		if ( token.type === DTYPE.PADDING ) {
+			part.type = DTYPE.PADDING;
 		}
 
-		if (part.type !== DTYPE.PADDING && part.name === null) throw(`Part with datatype ${part.type} is missing name!`);
-		if (norm_group === null && norm_type === null) throw('Part has neither group or type defined!');
-		this.#parts.push(part as InternalPart);
+		else if ( 'magic' in token ) {
+			if ('group' in token)			throw new KeyError( 'Magic substructs have not been implemented at this time!' );
+			if (token.type == undefined)	throw new KeyError( 'Signature token must have type defined!' );
+			if ( typeof token.type === 'number' && typeof token.size === 'number' )
+				if (!VerifyType(token.type, token.magic, token.size)) throw new KeyError( 'Magic value does not match component type. This will always return false!' );
 
+			part.magic = token.magic;
+			part.type = token.type;
+			part.endian = token.endian ?? LITTLE_ENDIAN;
+		}
+
+		else {
+			if (!( 'name' in token )) throw new KeyError( 'Component must have a name if not magic or padding!' );
+			if ( token.type == null && token.group == null ) throw new KeyError( 'Component type or group must be defined!' );
+			if ( token.type != null && typeof token.type !== 'function' && token.group != null && typeof token.group !== 'function' )
+				throw new KeyError( 'Component type and group cannot both be defined as non-functions!' );
+
+			part.name = token.name;
+			part.type = token.type;
+			part.group = token.group;
+			part.endian = token.endian ?? LITTLE_ENDIAN;
+		}
+
+		this.#parts.push(part);
 		return this;
 	}
 
@@ -161,39 +193,55 @@ export class InternalStruct {
 		for ( let i=0; i<this.#parts.length; i++ ) {
 			const part = this.#parts[i];
 
-			try {
-			const part_rsize  = this.#askint(part.size, 'size');
-			const part_fsize  = (part_rsize===SINGLE) ? 1 : part_rsize;
-			const part_type   = (part.type===null) ? null : this.#ask(part.type);
-			const part_group  = (part.group===null) ? null : this.#ask(part.group);
-			const part_data   = (part.name===null) ? null : data[part.name];
+			const raw_size						= this.#askint(part.size, 'size');
+			const part_type: int|null			= this.#ask(part.type);
+			const part_group: SharedStruct|null	= this.#ask(part.group);
 
-			if (part_group!==null && part_type!==null) throw new TypeXorError(`Part ${part.name} evaluated to both substruct and component. One of type/group must be non-null!`);
-			if (part_group===null && part_type===null) throw new TypeXorError(`Part ${part.name} evaluated to neither substruct or component. One of type/group must be non-null!`);
+			let part_size: int					= raw_size;
+			let part_data: any|null				= null;
 
-			if (part_group) {
-				/* SUBSTRUCT */
+			/* NORMALIZE INPUT */
 
-				// Validate
-				if (part_data===undefined) throw new KeyError(`Substruct ${part.name} was not provided with context in input!`);
+			// NULLSTOP support
+			if ( part_size === NULLSTOP ) {
+				part_size = data[part.name].length;
+			}
 
-				// Write
-				if (part_rsize===SINGLE)	bits.push(part_group.__pack__(part_data));
-				else 						for ( let j=0; j<part_fsize; j++ ) bits.push(part_group.__pack__(part_data[j]));
+			// Fix SINGLE
+			else if ( raw_size === SINGLE && DNARRAY[part_type] ) {
+				part_size = 1;
+			}
+
+			// Standard component type
+			if ( part.name !== undefined ) {
+				if (part_group!=null && part_type!=null) throw new TypeXorError(`Component ${part.name} evaluated to both substruct and component. One of type/group must be non-null!`);
+				if (part_group==null && part_type==null) throw new TypeXorError(`Component ${part.name} evaluated to neither substruct or component. One of type/group must be non-null!`);
+				part_data = data[part.name];
+			}
+
+			// Magic component type
+			else if ( part.magic !== undefined ) {
+				if ( part_type === null ) throw new KeyError(`Magic component type property resolved to null!`);
+				part_data = part.magic;
+			}
+
+			/* PACK DATA */
+
+			if ( part_group ) {
+				if ( part_size === SINGLE )
+					bits.push(part_group.__pack__(part_data));
+				else
+					for ( let j=0; j<part_size; j++ ) bits.push(part_group.__pack__(part_data[j]));
 
 			}
 			else {
-				/* COMPONENT */
-
-				// Validate
-				if (part_data===undefined && part.name!==null ) throw new KeyError(`Component ${part.name} was not provided with data in input!`);
-
-				// Write
-				if (part_rsize===SINGLE && !DNARRAY[part_type as number])
-						bits.push(Pack(part_type as number, [part_data], part_fsize, part.endian));
-				else	bits.push(Pack(part_type as number, part_data, part_fsize, part.endian));
+				if ( part_size === SINGLE )
+					bits.push(Pack(part_type, [part_data], 1, part.endian));
+				else
+					bits.push(Pack(part_type, part_data, part_size, part.endian));
 			}
-			} catch(error) { console.log(`An error occurred while processing part ${part.name}:`); throw(error); }
+
+			if ( raw_size === NULLSTOP ) bits.push( new Uint8Array(1).fill(0x00) );
 		}
 
 		let target_size = 0;
@@ -217,42 +265,98 @@ export class InternalStruct {
 		for ( let i=0; i<this.#parts.length; i++ ) {
 			const part = this.#parts[i];
 
-			try {
-			const part_rsize  = this.#askint(part.size, 'size');
-			const part_fsize  = (part_rsize===SINGLE) ? 1 : part_rsize;
-			const part_type   = (part.type===null) ? null : this.#ask(part.type);
-			const part_group  = (part.group===null) ? null : this.#ask(part.group);
-			let unpacked: any;
+			const part_type: int|null			= this.#ask(part.type);
+			const part_group: SharedStruct|null	= this.#ask(part.group);
 
-			if (part_group!==null && part_type!==null) throw new TypeXorError(`Part ${part.name} evaluated to both substruct and component. One of type/group must be non-null!`);
-			if (part_group===null && part_type===null) throw new TypeXorError(`Part ${part.name} evaluated to neither substruct or component. One of type/group must be non-null!`);
+			let raw_size						= this.#askint(part.size, 'size');
+			let part_size: int					= raw_size;
+			let part_data: any|null				= null;
 
-			if (part_group) {
-				/* SUBSTRUCT */
+			/* NORMALIZE INPUT */
 
-				if (part_rsize === SINGLE)
-					[unpacked,] = part_group.__unpack__(data, pointer);
+			if ( part_size === NULLSTOP && part_type != null ) {
+				let count = 0, p = pointer;
+				const bytesize = DBYTES[part_type];
+				while ( p < data.length && data[p] !== 0x00 ) p += bytesize, count++;
+				part_size = count;
+			}
+
+			// Fix SINGLE
+			else if ( raw_size === SINGLE ) {
+				if ( part_type != null && DNARRAY[part_type] ) raw_size = 1;
+				part_size = 1;
+			}
+
+			// Standard component type
+			if ( part.name !== undefined ) {
+				if (part_group!=null && part_type!=null) throw new TypeXorError(`Part ${part.name} evaluated to both substruct and component. One of type/group must be non-null!`);
+				if (part_group==null && part_type==null) throw new TypeXorError(`Part ${part.name} evaluated to neither substruct or component. One of type/group must be non-null!`);
+			}
+
+			// Magic component type
+			else if ( part.magic !== undefined ) {
+				if ( part_type === null ) throw new KeyError(`Magic component type property resolved to null!`);
+
+				let bytecount = part_size * DBYTES[part_type];
+				part_data = data.slice( pointer, pointer += bytecount );
+
+				let unpacked: any;
+				if ( raw_size === SINGLE ) {
+					[unpacked] = Unpack(part_type, part_data, 1, part.endian);
+					if ( unpacked !== part.magic ) throw new ParseError( `Failed to match magic signature! ${unpacked} !== ${part.magic}` );
+				}
+
 				else {
-					unpacked = new Array(part_fsize);
-					for ( let j=0; j<part_fsize; j++ ) [unpacked[j], pointer] = part_group.__unpack__(data, pointer);
+					unpacked = Unpack(part_type, part_data, part_size, part.endian);
+					if ( unpacked.length !== part.magic.length ) throw new ParseError( `Failed to match magic signature! ${unpacked.constructor.name}(${unpacked.length}) !== ${part.magic.constructor.name}(${part.magic.length})` );
+					for ( let j=0; j<part.magic.length; j++ )
+						if ( unpacked[j] !== part.magic[j] ) throw new ParseError( `Failed to match magic signature! Item ${j}: ${unpacked[j]} !== ${part.magic[j]}` );
+				}
+
+				continue;
+			}
+
+			// Padding component type
+			else if ( part.type === DTYPE.PADDING ) {
+				pointer += part_size;
+				continue;
+			}
+
+			/* UNPACK DATA */
+
+			let unpacked: any;
+			if (part_group) {
+				if ( raw_size === SINGLE )
+					[unpacked, pointer] = part_group.__unpack__(data, pointer);
+
+				else if ( raw_size === NULLSTOP ) {
+					let count = 0;
+					unpacked = [];
+					while ( pointer < data.length ) {
+						if ( data[pointer] === 0x00 ) break;
+						[unpacked[count], pointer] = part_group.__unpack__(data, pointer);
+						count++;
+					}
+				}
+
+				else {
+					unpacked = new Array(part_size);
+					for ( let j=0; j<part_size; j++ ) [unpacked[j], pointer] = part_group.__unpack__(data, pointer);
 				}
 			}
 
 			else {
-				/* COMPONENT */
+				part_data = data.slice( pointer, pointer += DBYTES[part_type]*part_size );
+				if ( raw_size === NULLSTOP ) pointer++;
+				if ( pointer > data.length ) throw new BufferError(`Not enough data! (Attempted to access byte at index ${pointer})`);
 
-				const size_bytes = part_fsize*DBYTES[part_type];
-				pointer += size_bytes;
-
-				if (pointer > data.length) throw new BufferError(`Not enough data! (Attempted to access byte at index ${pointer})`);
-				if (part.type !== DTYPE.PADDING) {
-					unpacked = Unpack(part_type, data.slice(pointer-size_bytes, pointer), part_fsize, part.endian);
-					if (part_rsize === SINGLE && !DNARRAY[part_type]) [unpacked] = unpacked;
-				}
+				if ( raw_size === SINGLE )
+					[unpacked] = Unpack(part_type, part_data, 1, part.endian);
+				else
+					unpacked = Unpack(part_type, part_data, part_size, part.endian);
 			}
 
-			if (unpacked !== undefined) this.#context[part.name as string] = unpacked;
-			} catch(error) { console.log(`An error occurred while processing part ${part.name}:`); throw(error); }
+			this.#context[part.name] = unpacked;
 		}
 
 		const target = Object.assign({}, this.#context);
@@ -262,7 +366,7 @@ export class InternalStruct {
 }
 
 export class Struct extends InternalStruct {
-	constructor( struct?:string|ExternalPart[] ) {
+	constructor( struct?:string|Component[] ) {
 		super(struct);
 	}
 

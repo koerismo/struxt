@@ -4,7 +4,7 @@ import { int } from './types.js';
 export const SINGLE = -1;
 
 /** Constant used to identify null-terminated variable length components. NOT IMPLEMENTED! */
-// export const NULLSTOP = -2;
+export const NULLSTOP = -2;
 
 /** Unique integer constant representations of datatypes. */
 export const DTYPE = {
@@ -116,16 +116,16 @@ function SwapOrder( target:Uint8Array, size:int ): Uint8Array {
 }
 
 /** Datatype pack function, used internally by Construct. */
-export function Pack( type:int, data:ArrayLike<number>|any|null, size:int, endianness:boolean ): Uint8Array {
+export function Pack( type:int, data:ArrayLike<number>|any|null, size:int, endianness:boolean|null ): Uint8Array {
 	const bytes = _Pack(type, data, size);
-	if (endianness !== SYSTEM_ENDIAN) SwapOrder(bytes, DBYTES[type]);
+	if (endianness === !SYSTEM_ENDIAN) SwapOrder(bytes, DBYTES[type]);
 	return bytes;
 }
 
 /** Datatype pack function, used internally by Construct. */
-export function Unpack( type:int, data:Uint8Array, size:number, endianness:boolean ): ArrayLike<number>|any|null {
+export function Unpack( type:int, data:Uint8Array, size:int, endianness:boolean|null ): ArrayLike<number>|any|null {
 	const bytes = new Uint8Array(data);
-	if (endianness !== SYSTEM_ENDIAN) SwapOrder(bytes, DBYTES[type]);
+	if (endianness === !SYSTEM_ENDIAN) SwapOrder(bytes, DBYTES[type]);
 	return _Unpack(type, bytes, size);
 }
 
@@ -207,7 +207,7 @@ function _Pack( type:int, data:ArrayLike<number>|any|null, size:int ): Uint8Arra
 	throw('Unrecognized datatype '+type+'!');
 }
 
-function _Unpack( type:int, data:Uint8Array, size:number ): ArrayLike<number>|any|null {
+function _Unpack( type:int, data:Uint8Array, size:int ): ArrayLike<number>|any|null {
 
 	// @ts-ignore
 	if (!(data instanceof Uint8Array)) throw new TypeError(`Unpack expected Uint8Array, but received ${data.constructor.name} instead!`);
@@ -266,7 +266,9 @@ function _Unpack( type:int, data:Uint8Array, size:number ): ArrayLike<number>|an
 	/* BOOL */
 
 	if (type === DTYPE.BOOL) {
-		return data;
+		const out: boolean[] = new Array(size).fill(false);
+		for ( let i=0; i<size; i++ ) if (data[i]) out[i] = true;
+		return out;
 	}
 
 	/* PADDING */
@@ -281,4 +283,36 @@ function _Unpack( type:int, data:Uint8Array, size:number ): ArrayLike<number>|an
 
 
 	throw('Unrecognized datatype '+type+'!');
+}
+
+export function VerifyType( type:int, data:any, size:int=SINGLE ): boolean {
+	if ( type <= DTYPE.CHAR && size === SINGLE ) return typeof data === 'number';
+	if ( type === DTYPE.BOOL && size === SINGLE ) return typeof data === 'boolean';
+
+	switch (type) {
+		case DTYPE.INT8:	return data instanceof Int8Array;
+		case DTYPE.UINT8:	return data instanceof Uint8Array;
+
+		case DTYPE.INT16:	return data instanceof Int16Array;
+		case DTYPE.UINT16:	return data instanceof Uint16Array;
+
+		case DTYPE.INT32:	return data instanceof Int32Array;
+		case DTYPE.UINT32:	return data instanceof Uint32Array;
+
+		case DTYPE.INT64:	return data instanceof BigInt64Array;
+		case DTYPE.UINT64:	return data instanceof BigUint64Array;
+
+		case DTYPE.FLOAT32:	return data instanceof Float32Array;
+		case DTYPE.FLOAT64:	return data instanceof Float64Array;
+
+		case DTYPE.CHAR:	return data instanceof Uint8Array;
+		case DTYPE.STR:		return typeof data === 'string';
+
+		case DTYPE.PADDING:	return false;
+		case DTYPE.NULL:	return true;
+
+		case DTYPE.BOOL:	return data instanceof Array;
+
+		default: throw new TypeError(`Datatype ${type} does not exist!`);
+	}
 }
