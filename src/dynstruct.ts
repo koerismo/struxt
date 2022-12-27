@@ -25,12 +25,28 @@ export function ParseError( msg:string ) {
 	this.name		= 'ParseError';
 }
 
-/* Complex Struct Class */
+/** Represents the active struct context. */
+export class StructContext {
+	#table: {[key: string]: any};
+	#parent: StructContext|null;
+
+	constructor( table:Object, parent:StructContext|null ) {
+		this.#table = table;
+		this.#parent = parent;
+	}
+
+	/**
+	 * Retrieves the value of any preceeding component.
+	 * @param key The name of the target component.
+	 * @returns The resulting value.
+	 */
+	get( key:string ) { return this.#table[key] }
+
+	get parent(): StructContext|null { return this.#parent }
+}
 
 export class InternalStruct {
 	#parts: InternalComponent[] = [];
-	#map: {[key: string]: InternalComponent} = {};
-	#context: {}|null = null;
 
 	/**
 	 * @param struct See API reference.
@@ -113,16 +129,6 @@ export class InternalStruct {
 	}
 
 	/**
-	 * Retrieves the value of a component in this Struct.
-	 * @param name The component to evaluate.
-	 * @returns The resulting value, or undefined if the component has not been unpacked yet.
-	 */
-	eval( name:string ): any|undefined {
-		if (!this.#context) throw('Attempted to access Struct context outside of pack/unpack routine!');
-		return this.#context[name];
-	}
-
-	/**
 	 * Appends a new component to this Struct.
 	 * @param token The component to append.
 	 * @returns this
@@ -163,33 +169,30 @@ export class InternalStruct {
 		return this;
 	}
 
-	#ask( attr:any|Function ): any {
-		if ( typeof attr === 'function' ) return attr(this);
+	#ask( attr:any|Function, ctx:any ): any {
+		if ( typeof attr === 'function' ) return attr(ctx);
 		return attr;
 	}
 
-	#askint( attr:any|Function, name:string ): int {
-		if ( typeof attr === 'function' ) {
-			attr = attr(this);
-			if ( typeof attr !== 'number' ) throw new TypeError(`Expected function value of parameter "${name}" to return integer, but got ${typeof attr} instead!`);
-			if ( attr%1 ) throw new TypeError(`Expected function value of parameter "${name}" to return integer, but got float instead!`);
-		};
+	#askint( attr:any|Function, name:string, ctx:any ): int {
+		attr = this.#ask(attr, ctx);
 		if ( typeof attr !== 'number' ) throw new TypeError(`Expected integer value for parameter "${name}", but found ${typeof attr} instead!`);
 		if ( attr%1 ) throw new TypeError(`Expected integer value for parameter "${name}", but found float instead!`);
 		return attr;
 	}
 
 	/** @private */
-	__pack__( data:Object ): Uint8Array {
-		this.#context = Object.assign({}, data);
+	__pack__( data:Object, parent:StructContext|null ): Uint8Array {
+		const context = Object.assign({}, data);
+		const provider = new StructContext(context, parent);
 
 		const bits: Uint8Array[] = [];
 		for ( let i=0; i<this.#parts.length; i++ ) {
 			const part = this.#parts[i];
 
-			const raw_size						= this.#askint(part.size, 'size');
-			const part_type: int|null			= this.#ask(part.type);
-			const part_group: SharedStruct|null	= this.#ask(part.group);
+			const raw_size						= this.#askint(part.size, 'size', provider);
+			const part_type: int|null			= this.#ask(part.type, provider);
+			const part_group: SharedStruct|null	= this.#ask(part.group, provider);
 
 			let part_size: int					= raw_size;
 			let part_data: any|null				= null;
@@ -223,9 +226,9 @@ export class InternalStruct {
 
 			if ( part_group ) {
 				if ( part_size === SINGLE )
-					bits.push(part_group.__pack__(part_data));
+					bits.push(part_group.__pack__(part_data, provider));
 				else
-					for ( let j=0; j<part_size; j++ ) bits.push(part_group.__pack__(part_data[j]));
+					for ( let j=0; j<part_size; j++ ) bits.push(part_group.__pack__(part_data[j], provider));
 
 			}
 			else {
@@ -248,21 +251,21 @@ export class InternalStruct {
 			pointer += bits[i].length;
 		}
 
-		this.#context = null;
 		return target;
 	}
 
 	/** @private */
-	__unpack__( data:Uint8Array, pointer=0 ): [Object, int] {
-		this.#context = {};
+	__unpack__( data:Uint8Array, pointer:int, parent:StructContext|null ): [Object, int] {
+		const context = {};
+		const provider = new StructContext(context, parent);
 
 		for ( let i=0; i<this.#parts.length; i++ ) {
 			const part = this.#parts[i];
 
-			const part_type: int|null			= this.#ask(part.type);
-			const part_group: SharedStruct|null	= this.#ask(part.group);
+			const part_type: int|null			= this.#ask(part.type, provider);
+			const part_group: SharedStruct|null	= this.#ask(part.group, provider);
 
-			let raw_size						= this.#askint(part.size, 'size');
+			let raw_size						= this.#askint(part.size, 'size', provider);
 			let part_size: int					= raw_size;
 			let part_data: any|null				= null;
 
@@ -321,21 +324,21 @@ export class InternalStruct {
 			let unpacked: any;
 			if (part_group) {
 				if ( raw_size === SINGLE )
-					[unpacked, pointer] = part_group.__unpack__(data, pointer);
+					[unpacked, pointer] = part_group.__unpack__(data, pointer, provider);
 
 				else if ( raw_size === NULLSTOP ) {
 					let count = 0;
 					unpacked = [];
 					while ( pointer < data.length ) {
 						if ( data[pointer] === 0x00 ) break;
-						[unpacked[count], pointer] = part_group.__unpack__(data, pointer);
+						[unpacked[count], pointer] = part_group.__unpack__(data, pointer, provider);
 						count++;
 					}
 				}
 
 				else {
 					unpacked = new Array(part_size);
-					for ( let j=0; j<part_size; j++ ) [unpacked[j], pointer] = part_group.__unpack__(data, pointer);
+					for ( let j=0; j<part_size; j++ ) [unpacked[j], pointer] = part_group.__unpack__(data, pointer, provider);
 				}
 			}
 
@@ -350,12 +353,10 @@ export class InternalStruct {
 					unpacked = Unpack(part_type, part_data, part_size, part.endian);
 			}
 
-			this.#context[part.name] = unpacked;
+			context[part.name] = unpacked;
 		}
 
-		const target = Object.assign({}, this.#context);
-		this.#context = null;
-		return [target, pointer];
+		return [context, pointer];
 	}
 }
 
@@ -370,7 +371,7 @@ export class Struct extends InternalStruct {
 	 * @returns An array of bytes.
 	 */
 	pack( data:Object ) {
-		return super.__pack__(data);
+		return super.__pack__(data, null);
 	}
 
 	/**
@@ -379,6 +380,6 @@ export class Struct extends InternalStruct {
 	 * @returns An object containing the unpacked values.
 	 */
 	unpack( data:Uint8Array ) {
-		return super.__unpack__(data)[0];
+		return super.__unpack__(data, 0, null)[0];
 	}
 }

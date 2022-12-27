@@ -34,7 +34,7 @@ import { Struct, DTYPE as D } from 'struxt';
 
 var myStruct = new Struct();
 myStruct.add({ name: 'str-length', type: D.UINT16 });
-myStruct.add({ name: 'str', type: D.STR, size: () => myStruct.eval('str-length') });
+myStruct.add({ name: 'str', type: D.STR, size: ctx => ctx.get('str-length') });
 
 var data = myStruct.pack({ 'str-length': 5, 'str': 'hello' });
 
@@ -194,7 +194,7 @@ Dynamic structures. This is what makes struxt special! For some parameters (`gro
 ```ts
 const myStruct = new Struct([
 	{ name: 'datatype', type: DTYPE.UINT8 },
-	{ name: 'data', type: self => self.eval('datatype') },
+	{ name: 'data', type: ctx => ctx.get('datatype') },
 ]);
 
 // As the struct is packing the "datatype" component,
