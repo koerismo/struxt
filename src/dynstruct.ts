@@ -212,7 +212,7 @@ export class InternalStruct {
 			// Standard component type
 			if ( part.name !== undefined ) {
 				if (part_group!=null && part_type!=null) throw new TypeXorError(`Component ${part.name} evaluated to both substruct and component. One of type/group must be non-null!`);
-				if (part_group==null && part_type==null) throw new TypeXorError(`Component ${part.name} evaluated to neither substruct or component. One of type/group must be non-null!`);
+				if (part_group==null && part_type==null) continue;
 				part_data = data[part.name];
 			}
 
@@ -287,7 +287,7 @@ export class InternalStruct {
 			// Standard component type
 			if ( part.name !== undefined ) {
 				if (part_group!=null && part_type!=null) throw new TypeXorError(`Part ${part.name} resolved to both substruct and component. One of type/group must be non-null!`);
-				if (part_group==null && part_type==null) throw new TypeXorError(`Part ${part.name} resolved to neither substruct or component. One of type/group must be non-null!`);
+				if (part_group==null && part_type==null) continue;
 			}
 
 			// Magic component type
