@@ -1,13 +1,13 @@
-import { Struct, InternalStruct } from './dynstruct.js';
+import { Struct, InternalStruct, StructContext } from './dynstruct.js';
 import { DTYPE } from 'datatype.js';
 
 /** Abstract integer type. */
 export type int = number;
 
 export type SharedStruct = Struct|InternalStruct;
-export type ReturnsInt = (self: Struct) => int;
-export type ReturnsStruct = (self: Struct) => SharedStruct;
-export type ReturnsNull = (self: Struct) => null;
+export type ReturnsInt = (context: StructContext) => int;
+export type ReturnsStruct = (context: StructContext) => SharedStruct;
+export type ReturnsNull = (context: StructContext) => null;
 
 /** Component interface. */
 export type Component =  {

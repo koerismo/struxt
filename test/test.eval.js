@@ -25,7 +25,7 @@ it( 'Tests valid struct evaluators', done => {
 
 runtest([
 	{ name: 'a', type: D.UINT8 },
-	{ name: 'b', type: self => self.eval('a') }
+	{ name: 'b', type: ctx => ctx.get('a') }
 ], [
 	{ a: D.UINT8, b: 0xff },
 	{ a: D.FLOAT64, b: 123.456789 }
@@ -35,7 +35,7 @@ runtest([
 
 runtest([
 	{ name: 'a', type: D.UINT8 },
-	{ name: 'b', type: D.STR, size: self => self.eval('a') }
+	{ name: 'b', type: D.STR, size: ctx => ctx.get('a') }
 ], [
 	{ a: 3, b: 'xyz' },
 	{ a: 4, b: 'abcd' }
@@ -45,11 +45,23 @@ runtest([
 
 runtest([
 	{ name: 'a', type: D.BOOL },
-	{ name: 'b', type: self => self.eval('a') ? null:D.UINT8, group: self => self.eval('a') ? new Struct():null }
+	{ name: 'b', type: ctx => ctx.get('a') ? null:D.UINT8, group: ctx => ctx.get('a') ? new Struct():null }
 ], [
 	{ a: false, b: 123 },
 	{ a: true, b: {} },
 ], [2, 1]);
+
+/* Parent context reference */
+
+runtest([
+	{ name: 'a', type: D.BOOL },
+	{ name: 'b', group: new Struct([
+		{ name: 'c', type: ctx => ctx.parent.get('a') ? D.INT8 : D.FLOAT64 }
+	]) }
+], [
+	{ a: true, b: { c: 123 } },
+	{ a: false, b: { c: 456.789 } },
+], [2, 9]);
 
 done();
 });
@@ -61,7 +73,7 @@ it( 'Tests invalid struct evaluators', done => {
 
 runcrashtest([
 	{ name: 'a', type: D.UINT8 },
-	{ name: 'b', type: D.STR, size: self => null }
+	{ name: 'b', type: D.STR, size: ctx => null }
 ], [
 	{ a: 3, b: '' },
 	{ a: 4, b: '' }
@@ -71,7 +83,7 @@ runcrashtest([
 
 runcrashtest([
 	{ name: 'a', type: D.BOOL },
-	{ name: 'b', type: self => self.eval('a'), group: self => self.eval('a') }
+	{ name: 'b', type: ctx => ctx.get('a'), group: ctx => ctx.get('a') }
 ], [
 	{ a: false },
 	{ a: true }
