@@ -6,7 +6,8 @@
 		"outDir": "dist",
 		"baseUrl": "src",
 		"lib": [ "DOM", "ES2020" ],
-		"declaration": true
+		"declaration": true,
+		"alwaysStrict": true,
 	},
 	"include": [ "src/**/*" ]
 }
