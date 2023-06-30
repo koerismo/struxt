@@ -16,9 +16,9 @@ const PlayerData = new Struct(ptr => {
 	ptr.f32('position', 3);
 	ptr.f32('rotation', 3);
 	ptr.u8('health');
-	ptr.str('name', '\0');
+	ptr.str('name');
 
 	// write the chunk length to the allocated byte as a uint8
-	len_ptr.u8(Literal( ptr.position() ));
+	len_ptr.u8(Literal( ptr.position() - 1 ));
 });
 ```

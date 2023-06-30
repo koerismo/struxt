@@ -3,6 +3,7 @@
 	"author": "koerismo",
 	"description": "Functional binary structures for Javascript.",
 	"version": "3.0.0",
+	"private": "true",
 	"keywords": [
 		"struct",
 		"binary",
@@ -22,7 +23,7 @@
 		"dist/*"
 	],
 	"scripts": {
-		"build": "ttsc",
+		"build": "tspc",
 		"test": "c8 mocha",
 		"format": "prettier --write dist/",
 		"publish": "npm run test && npm publish"
@@ -32,11 +33,11 @@
 		"url": "git+https://github.com/koerismo/struxt.git"
 	},
 	"devDependencies": {
-		"c8": "^7.12.0",
+		"c8": "^8.0.0",
 		"mocha": "^10.2.0",
 		"prettier": "2.8.8",
 		"ts-macros": "^2.2.2",
-		"ttypescript": "^1.5.15",
-		"typescript": "^4.9.4"
+		"ts-patch": "^3.0.1",
+		"typescript": "^5.1.6"
 	}
 }
