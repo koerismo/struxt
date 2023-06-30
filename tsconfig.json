@@ -6,8 +6,13 @@
 		"outDir": "dist",
 		"baseUrl": "src",
 		"lib": [ "DOM", "ES2020" ],
+		"moduleResolution": "nodenext",
 		"declaration": true,
 		"alwaysStrict": true,
+		
+		"plugins": [
+			{ "transform": "ts-macros" }
+		]
 	},
 	"include": [ "src/**/*" ]
 }

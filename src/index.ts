@@ -1,3 +1,4 @@
+import 'ts-macros';
 import { Struct } from './struct.js';
 import { toLiteral as Literal } from './utils.js';
 
