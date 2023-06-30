@@ -2,38 +2,44 @@ import { Arr, Context, Key, Pointer, Struct, numbers } from './types.js';
 import { Literal, isArrayLike, untilTerminator } from './utils.js';
 
 export class UnpackPointer implements Pointer {
-	#ctx: Context;
-	#start: number;
-	#pos: number;
-	#end: number;
+	_ctx: Context;
+	_start: number;
+	_pos: number;
+	_end: number;
 
 	constructor(context: Context, start: number, end: number) {
-		this.#ctx = context;
-		this.#start = start;
-		this.#pos = start;
-		this.#end = end;
+		this._ctx = context;
+		this._start = start;
+		this._pos = start;
+		this._end = end;
 	}
 
 	position(): number {
-		return this.#pos;
+		return this._pos;
 	}
 
 	length(): number {
-		return this.#pos - this.#start;
+		return this._pos - this._start;
 	}
 
 	defer(length: number): Pointer {
-		const pointer = new UnpackPointer(this.#ctx, this.#pos, this.#pos + length);
-		this.#pos += length;
+		const pointer = new UnpackPointer(this._ctx, this._pos, this._pos + length);
+		this._pos += length;
 		return pointer;
 	}
 
+	seek(position: number): void {
+		this._pos = position + this._start;
+		if (this._pos < this._start) throw(`PackPointer.seek: Attempted to seek past start boundary!`);
+		if (this._pos > this._end) throw(`PackPointer.seek: Attempted to seek past end boundary!`);
+	}
+
 	pad(length: number): void {
-		this.#pos += length;
+		this._pos += length;
 	}
 
 	align(multiple: number, offset?: number): void {
-		this.#pos = offset + this.#pos + (multiple - this.#pos % multiple) % multiple;
+		this._pos = offset + this._pos + (multiple - this._pos % multiple) % multiple;
 	}
 
 	bool(key: Key<boolean>): boolean;
@@ -62,20 +68,20 @@ export class UnpackPointer implements Pointer {
 
 		if (length !== undefined) {
 			if (typeof length === 'string') {
-				const end = untilTerminator(this.#ctx.view, this.#pos, length.charCodeAt(0), 1);
-				value = this.#ctx.array.slice(this.#pos, end);
-				this.#pos = end + 1;
+				const end = untilTerminator(this._ctx.view, this._pos, length.charCodeAt(0), 1);
+				value = this._ctx.array.slice(this._pos, end);
+				this._pos = end + 1;
 			}
 
 			else {
-				value = this.#ctx.array.slice(this.#pos, this.#pos + length);
-				this.#pos += length;
+				value = this._ctx.array.slice(this._pos, this._pos + length);
+				this._pos += length;
 			}
 		}
 
 		else {
-			value = this.#ctx.view.getUint8(this.#pos);
-			this.#pos += 1;
+			value = this._ctx.view.getUint8(this._pos);
+			this._pos += 1;
 		}
 
 		if (key instanceof Literal) {
@@ -84,7 +90,7 @@ export class UnpackPointer implements Pointer {
 		}
 
 		else {
-			this.#ctx.object[key] = value;
+			this._ctx.object[key] = value;
 			return value;
 		}
 	}

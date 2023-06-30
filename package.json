@@ -25,7 +25,7 @@
 	],
 
 	"scripts": {
-		"build": "tsc",
+		"build": "ttsc",
 		"test": "c8 mocha",
 		"publish": "npm run test && npm publish"
 	},

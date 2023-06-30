@@ -29,6 +29,9 @@ export interface Pointer {
 	// Allocate the specified length for a new pointer.
 	defer(length: number): Pointer;
 
+	// Go to the specified position relative to this pointer's starting bound.
+	seek(position: number): void;
+
 	// Alignment
 	pad(length: number): void;
 	align(multiple: number, offset?: number): void;
