@@ -1,5 +1,5 @@
 import { Context } from './context.js';
-import { Pointer, Unpacked, Packed } from './types.js';
+import type { Pointer, Unpacked, Packed } from './types.js';
 import { PackPointer } from './pack.js';
 import { UnpackPointer } from './unpack.js';
 

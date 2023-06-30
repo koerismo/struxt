@@ -1,5 +1,5 @@
 import { $$inline } from 'ts-macros';
-import { Arr, Context, Key, Pointer, Struct, numbers } from './types.js';
+import type { Arr, Context, Key, Pointer, Struct, numbers } from './types.js';
 import { Literal, isArrayLike } from './utils.js';
 
 // REPLACE THIS WITH A PROPER SOLUTION FOR ENDIANNESS!!

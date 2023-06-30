@@ -10,34 +10,31 @@
 		"parsing",
 		"lightweight"
 	],
-
 	"type": "module",
 	"license": "MPL-2.0",
 	"bugs": {
 		"url": "https://github.com/koerismo/struxt/issues"
 	},
-
 	"homepage": "https://github.com/koerismo/struxt",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"files": [
 		"dist/*"
 	],
-
 	"scripts": {
 		"build": "ttsc",
 		"test": "c8 mocha",
+		"format": "prettier --write dist/",
 		"publish": "npm run test && npm publish"
 	},
-
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/koerismo/struxt.git"
 	},
-
 	"devDependencies": {
 		"c8": "^7.12.0",
 		"mocha": "^10.2.0",
+		"prettier": "2.8.8",
 		"ts-macros": "^2.2.2",
 		"ttypescript": "^1.5.15",
 		"typescript": "^4.9.4"

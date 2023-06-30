@@ -30,8 +30,8 @@ export function untilTerminator(view: DataView, pointer: number, terminator: num
 
 
 export function isArrayLike(object: unknown): object is ArrayLike<any> {
-	//@ts-ignore
-	if (Array.isArray(object)) return true; //@ts-ignore
-	if ('length' in object) return true; //@ts-ignore
+	if (typeof object !== 'object' || object == null) return false;
+	if (Array.isArray(object)) return true;
+	if ('length' in object) return true;
 	return false;
 }

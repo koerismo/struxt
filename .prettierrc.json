@@ -1,0 +1,8 @@
+{
+	"quoteProps": "as-needed",
+	"useTabs": true,
+	"semi": true,
+	"arrowParens": "avoid",
+	"endOfLine": "lf",
+	"singleQuote": true
+}
