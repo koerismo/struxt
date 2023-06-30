@@ -12,7 +12,7 @@ export type Packed = ArrayBufferLike;
 /** The context holds the buffer data for all active pointers in a struct. */
 export interface Context {
 	object:	Unpacked;
-	buffer:	ArrayBuffer;
+	buffer:	Packed;
 	view:	DataView;
 	array:	Uint8Array;
 }
@@ -37,52 +37,52 @@ export interface Pointer {
 	align(multiple: number, offset?: number): void;
 
 	// Bool
-	bool(key: Key<boolean>):											boolean;
-	bool(key: Key<Arr<boolean>>,			length: number|string):		Arr<boolean>;
-	bool(key: Key<boolean|Arr<boolean>>,	length?: number|string):	boolean|Arr<boolean>;
+	bool(key: Key<boolean>):									boolean;
+	bool(key: Key<Arr<boolean>>,			length: number):	Arr<boolean>;
+	bool(key: Key<boolean|Arr<boolean>>,	length?: number):	boolean|Arr<boolean>;
 
 	// Struct
-	struct(key: Key<Struct>):											Struct;
-	struct(key: Key<Arr<Struct>>,			length: number|string):		Arr<Struct>;
-	struct(key: Key<Struct|Arr<Struct>>,	length?: number|string):	Struct|Arr<Struct>;
+	struct(key: Key<Struct>):									Struct;
+	struct(key: Key<Arr<Struct>>,			length: number):	Arr<Struct>;
+	struct(key: Key<Struct|Arr<Struct>>,	length?: number):	Struct|Arr<Struct>;
 
 	// String
-	str(key: Key<string>, length: number|string):	string;
+	str(key: Key<string>, length?: number):	string;
 
 	// Uints
-	u8(key: Key<number>):										number;
-	u8(key: Key<numbers>,			length: number|string):		numbers;
-	u8(key: Key<number|numbers>,	length?: number|string):	number|numbers;
+	u8(key: Key<number>):								number;
+	u8(key: Key<numbers>,			length: number):	numbers;
+	u8(key: Key<number|numbers>,	length?: number):	number|numbers;
 
-	u16(key: Key<number>):										number;
-	u16(key: Key<numbers>,			length: number|string):		numbers;
-	u16(key: Key<number|numbers>,	length?: number|string):	number|numbers;
+	u16(key: Key<number>):								number;
+	u16(key: Key<numbers>,			length: number):	numbers;
+	u16(key: Key<number|numbers>,	length?: number):	number|numbers;
 
-	u32(key: Key<number>):										number;
-	u32(key: Key<numbers>,			length: number|string):		numbers;
-	u32(key: Key<number|numbers>,	length?: number|string):	number|numbers;
+	u32(key: Key<number>):								number;
+	u32(key: Key<numbers>,			length: number):	numbers;
+	u32(key: Key<number|numbers>,	length?: number):	number|numbers;
 
 	// Ints
-	i8(key: Key<number>):										number;
-	i8(key: Key<numbers>,			length: number|string):		numbers;
-	i8(key: Key<number|numbers>,	length?: number|string):	number|numbers;
+	i8(key: Key<number>):								number;
+	i8(key: Key<numbers>,			length: number):	numbers;
+	i8(key: Key<number|numbers>,	length?: number):	number|numbers;
 
-	i16(key: Key<number>):										number;
-	i16(key: Key<numbers>,			length: number|string):		numbers;
-	i16(key: Key<number|numbers>,	length?: number|string):	number|numbers;
+	i16(key: Key<number>):								number;
+	i16(key: Key<numbers>,			length: number):	numbers;
+	i16(key: Key<number|numbers>,	length?: number):	number|numbers;
 
-	i32(key: Key<number>):										number;
-	i32(key: Key<numbers>,			length: number|string):		numbers;
-	i32(key: Key<number|numbers>,	length?: number|string):	number|numbers;
+	i32(key: Key<number>):								number;
+	i32(key: Key<numbers>,			length: number):	numbers;
+	i32(key: Key<number|numbers>,	length?: number):	number|numbers;
 
 	// Floats
-	f32(key: Key<number>):										number;
-	f32(key: Key<numbers>,			length: number|string):		numbers;
-	f32(key: Key<number|numbers>,	length?: number|string):	number|numbers;
+	f32(key: Key<number>):								number;
+	f32(key: Key<numbers>,			length: number):	numbers;
+	f32(key: Key<number|numbers>,	length?: number):	number|numbers;
 
-	f64(key: Key<number>):										number;
-	f64(key: Key<numbers>,			length: number|string):		numbers;
-	f64(key: Key<number|numbers>,	length?: number|string):	number|numbers;
+	f64(key: Key<number>):								number;
+	f64(key: Key<numbers>,			length: number):	numbers;
+	f64(key: Key<number|numbers>,	length?: number):	number|numbers;
 }
 
 export interface Struct {

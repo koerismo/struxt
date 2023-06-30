@@ -1,5 +1,4 @@
 import { $$inline } from 'ts-macros';
-
 import { Arr, Context, Key, Pointer, Struct, numbers } from './types.js';
 import { Literal, isArrayLike } from './utils.js';
 
@@ -11,9 +10,8 @@ function $key<T>(ctx: Context, key: Key<T>): T {
 }
 
 function $packGeneric<T>(
-	self: PackPointer,
 	value: T|ArrayLike<T>,
-	length: number|string|undefined,
+	length: number|undefined,
 	methodSingle: (v: T) => void,
 	methodArray: (len: number, v: ArrayLike<T>) => void
 	) {
@@ -23,22 +21,14 @@ function $packGeneric<T>(
 		}
 		else {
 			if (!isArrayLike(value)) throw(`PackPointer: Expected array-like, received ${value?.constructor.name} instead!`);
-			if (typeof length === 'string') {
-				$$inline!(methodArray, [value.length, value]);
-				self._ctx.view.setUint8(this._pos, length.charCodeAt(0));
-				this._pos += 1;
-			}
-			else {
-				if (value.length !== length) throw(`PackPointer: Value length (${value.length}) does not match expected length! (${length})`);
-				$$inline!(methodArray, [length, value]);
-			}
+			if (value.length !== length) throw(`PackPointer: Value length (${value.length}) does not match expected length! (${length})`);
+			$$inline!(methodArray, [length, value]);
 		}
 }
 
 function $packNumber<T>(
-	self: PackPointer,
 	value: T|ArrayLike<T>,
-	length: number|string|undefined,
+	length: number|undefined,
 	method: (v: T) => void
 	) {
 		if (length === undefined) {
@@ -47,18 +37,9 @@ function $packNumber<T>(
 		}
 		else {
 			if (!isArrayLike(value)) throw(`PackPointer: Expected array-like, received ${value?.constructor.name} instead!`);
-			if (typeof length === 'string') {
-				for ( let i=0; i<value.length; i++ ) {
-					$$inline!(method, [value[i]]);
-				}
-				self._ctx.view.setUint8(this._pos, length.charCodeAt(0));
-				this._pos += 1;
-			}
-			else {
-				if (value.length !== length) throw(`PackPointer: Value length (${value.length}) does not match expected length! (${length})`);
-				for ( let i=0; i<length; i++ ) {
-					$$inline!(method, [value[i]]);
-				}
+			if (value.length !== length) throw(`PackPointer: Value length (${value.length}) does not match expected length! (${length})`);
+			for ( let i=0; i<length; i++ ) {
+				$$inline!(method, [value[i]]);
 			}
 		}
 }
@@ -103,15 +84,14 @@ export class PackPointer implements Pointer {
 	}
 
 	align(multiple: number, offset?: number): void {
-		this._pos = offset + this._pos + (multiple - this._pos % multiple) % multiple;
+		this._pos = (offset ?? 0) + this._pos + (multiple - this._pos % multiple) % multiple;
 	}
 
 	bool(key: Key<boolean>): boolean;
-	bool(key: Key<Arr<boolean>>, length: string | number): Arr<boolean>;
-	bool(key: Key<boolean | Arr<boolean>>, length?: string | number): boolean | Arr<boolean>;
-	bool(key: Key<boolean | Arr<boolean>>, length?: string | number): boolean | Arr<boolean> {
+	bool(key: Key<Arr<boolean>>, length: number): Arr<boolean>;
+	bool(key: Key<boolean | Arr<boolean>>, length?: number): boolean | Arr<boolean> {
 		const value = $key!(this._ctx, key);
-		$packNumber!(this, value, length,
+		$packNumber!(value, length,
 			value => {
 				this._ctx.view.setUint8(this._pos, 0xff * +!!value);
 				this._pos ++;
@@ -121,21 +101,22 @@ export class PackPointer implements Pointer {
 	}
 
 	struct(key: Key<Struct>): Struct;
-	struct(key: Key<Arr<Struct>>, length: string | number): Arr<Struct>;
-	struct(key: Key<Struct | Arr<Struct>>, length?: string | number): Struct | Arr<Struct>;
-	struct(key: Key<Struct | Arr<Struct>>, length?: string | number): Struct | Arr<Struct> {
+	struct(key: Key<Arr<Struct>>, length: number): Arr<Struct>;
+	struct(key: Key<Struct | Arr<Struct>>, length?: number): Struct | Arr<Struct> {
 		throw new Error('Method not implemented.');
 	}
 
-	str(key: Key<string>, length: string | number): string {
+	str(key: Key<string>, length?: number): string {
 		const value = $key!(this._ctx, key);
+
+		// @ts-expect-error Input null check.
 		if (typeof value !== 'string') throw(`PackPointer: Expected string, received ${value?.constructor.name} instead!`);
 
 		const encoded = TE.encode(value);
-		if (typeof length === 'string') {
+		if (length === undefined) {
 			this._ctx.array.set(encoded, this._pos);
 			this._pos += value.length;
-			this._ctx.view.setUint8(this._pos, length.charCodeAt(0));
+			this._ctx.view.setUint8(this._pos, 0x00);
 			this._pos ++;
 		}
 		else {
@@ -149,10 +130,10 @@ export class PackPointer implements Pointer {
 
 	u8(key: Key<number>): number;
 	u8(key: Key<numbers>, length: number): numbers;
-	u8(key: Key<number | numbers>, length?: string | number): number | numbers;
-	u8(key: Key<number | numbers>, length?: string | number): number | numbers {
+	u8(key: Key<number | numbers>, length?: number): number | numbers {
 		const value = $key!(this._ctx, key);
-		$packGeneric!(this, value, length,
+
+		$packGeneric!(value, length,
 			value => {
 				this._ctx.view.setUint8(this._pos, value);
 				this._pos ++;
@@ -166,11 +147,10 @@ export class PackPointer implements Pointer {
 	}
 
 	u16(key: Key<number>): number;
-	u16(key: Key<numbers>, length: string | number): numbers;
-	u16(key: Key<number | numbers>, length?: string | number): number | numbers;
-	u16(key: Key<number | numbers>, length?: string | number): number | numbers {
+	u16(key: Key<numbers>, length: number): numbers;
+	u16(key: Key<number | numbers>, length?: number): number | numbers {
 		const value = $key!(this._ctx, key);
-		$packNumber!(this, value, length,
+		$packNumber!(value, length,
 			value => {
 				this._ctx.view.setUint16(this._pos, value, REPLACE_LITTLE);
 				this._pos += 2;
@@ -180,11 +160,10 @@ export class PackPointer implements Pointer {
 	}
 
 	u32(key: Key<number>): number;
-	u32(key: Key<numbers>, length: string | number): numbers;
-	u32(key: Key<number | numbers>, length?: string | number): number | numbers;
-	u32(key: Key<number | numbers>, length?: string | number): number | numbers {
+	u32(key: Key<numbers>, length: number): numbers;
+	u32(key: Key<number | numbers>, length?: number): number | numbers {
 		const value = $key!(this._ctx, key);
-		$packNumber!(this, value, length,
+		$packNumber!(value, length,
 			value => {
 				this._ctx.view.setUint32(this._pos, value, REPLACE_LITTLE);
 				this._pos += 4;
@@ -194,11 +173,10 @@ export class PackPointer implements Pointer {
 	}
 
 	i8(key: Key<number>): number;
-	i8(key: Key<numbers>, length: string | number): numbers;
-	i8(key: Key<number | numbers>, length?: string | number): number | numbers;
-	i8(key: Key<number | numbers>, length?: string | number): number | numbers {
+	i8(key: Key<numbers>, length: number): numbers;
+	i8(key: Key<number | numbers>, length?: number): number | numbers {
 		const value = $key!(this._ctx, key);
-		$packNumber!(this, value, length,
+		$packNumber!(value, length,
 			value => {
 				this._ctx.view.setInt8(this._pos, value);
 				this._pos ++;
@@ -208,11 +186,10 @@ export class PackPointer implements Pointer {
 	}
 
 	i16(key: Key<number>): number;
-	i16(key: Key<numbers>, length: string | number): numbers;
-	i16(key: Key<number | numbers>, length?: string | number): number | numbers;
-	i16(key: Key<number | numbers>, length?: string | number): number | numbers {
+	i16(key: Key<numbers>, length: number): numbers;
+	i16(key: Key<number | numbers>, length?: number): number | numbers {
 		const value = $key!(this._ctx, key);
-		$packNumber!(this, value, length,
+		$packNumber!(value, length,
 			value => {
 				this._ctx.view.setInt16(this._pos, value, REPLACE_LITTLE);
 				this._pos += 2;
@@ -222,11 +199,10 @@ export class PackPointer implements Pointer {
 	}
 
 	i32(key: Key<number>): number;
-	i32(key: Key<numbers>, length: string | number): numbers;
-	i32(key: Key<number | numbers>, length?: string | number): number | numbers;
-	i32(key: Key<number | numbers>, length?: string | number): number | numbers {
+	i32(key: Key<numbers>, length: number): numbers;
+	i32(key: Key<number | numbers>, length?: number): number | numbers {
 		const value = $key!(this._ctx, key);
-		$packNumber!(this, value, length,
+		$packNumber!(value, length,
 			value => {
 				this._ctx.view.setInt32(this._pos, value, REPLACE_LITTLE);
 				this._pos += 4;
@@ -236,11 +212,10 @@ export class PackPointer implements Pointer {
 	}
 
 	f32(key: Key<number>): number;
-	f32(key: Key<numbers>, length: string | number): numbers;
-	f32(key: Key<number | numbers>, length?: string | number): number | numbers;
-	f32(key: Key<number | numbers>, length?: string | number): number | numbers {
+	f32(key: Key<numbers>, length: number): numbers;
+	f32(key: Key<number | numbers>, length?: number): number | numbers {
 		const value = $key!(this._ctx, key);
-		$packNumber!(this, value, length,
+		$packNumber!(value, length,
 			value => {
 				this._ctx.view.setFloat32(this._pos, value, REPLACE_LITTLE);
 				this._pos += 4;
@@ -250,11 +225,10 @@ export class PackPointer implements Pointer {
 	}
 
 	f64(key: Key<number>): number;
-	f64(key: Key<numbers>, length: string | number): numbers;
-	f64(key: Key<number | numbers>, length?: string | number): number | numbers;
-	f64(key: Key<number | numbers>, length?: string | number): number | numbers {
+	f64(key: Key<numbers>, length: number): numbers;
+	f64(key: Key<number | numbers>, length?: number): number | numbers {
 		const value = $key!(this._ctx, key);
-		$packNumber!(this, value, length,
+		$packNumber!(value, length,
 			value => {
 				this._ctx.view.setFloat64(this._pos, value, REPLACE_LITTLE);
 				this._pos += 8;

@@ -29,7 +29,7 @@
 		"test": "c8 mocha",
 		"publish": "npm run test && npm publish"
 	},
-	
+
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/koerismo/struxt.git"

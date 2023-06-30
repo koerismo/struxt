@@ -2,7 +2,7 @@ import type { Context as GenericContext, Unpacked, Packed } from './types.js';
 
 export class Context implements GenericContext {
 	object: Unpacked;
-	buffer: ArrayBuffer;
+	buffer: Packed;
 	view: DataView;
 	array: Uint8Array;
 
