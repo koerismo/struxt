@@ -42,9 +42,9 @@ export interface Pointer {
 	bool(key: Key<boolean|Arr<boolean>>,	length?: number):	boolean|Arr<boolean>;
 
 	// Struct
-	struct(key: Key<Struct>):									Struct;
-	struct(key: Key<Arr<Struct>>,			length: number):	Arr<Struct>;
-	struct(key: Key<Struct|Arr<Struct>>,	length?: number):	Struct|Arr<Struct>;
+	struct(struct: Struct,	key: Key<Unpacked>):									Unpacked;
+	struct(struct: Struct,	key: Key<Arr<Unpacked>>,			length: number):	Arr<Unpacked>;
+	struct(struct: Struct,	key: Key<Unpacked|Arr<Unpacked>>,	length?: number):	Unpacked|Arr<Unpacked>;
 
 	// String
 	str(key: Key<string>, length?: number):	string;

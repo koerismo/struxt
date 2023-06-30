@@ -1,5 +1,5 @@
-import { $$inline } from 'ts-macros';
-import type { Arr, Context, Key, Pointer, Struct, numbers } from './types.js';
+import { $$inline, $$text } from 'ts-macros';
+import type { Arr, Context, Key, Pointer, Struct, Unpacked, numbers } from './types.js';
 import { Literal, isArrayLike } from './utils.js';
 
 // REPLACE THIS WITH A PROPER SOLUTION FOR ENDIANNESS!!
@@ -13,11 +13,12 @@ function $packGeneric<T>(
 	value: T|ArrayLike<T>,
 	length: number|undefined,
 	methodSingle: (v: T) => void,
-	methodArray: (len: number, v: ArrayLike<T>) => void
+	methodArray: (len: number, v: ArrayLike<T>) => void,
+	expectedType: string='number'
 	) {
 		if (length === undefined) {
-			if (typeof value !== 'number') throw(`PackPointer: Expected number, received ${value?.constructor.name} instead!`);
-			$$inline!(methodSingle, [value]);
+			if (typeof value !== expectedType) throw(`PackPointer: Expected ${expectedType}, received ${value?.constructor.name} instead!`);
+			$$inline!(methodSingle, [<T>value]);
 		}
 		else {
 			if (!isArrayLike(value)) throw(`PackPointer: Expected array-like, received ${value?.constructor.name} instead!`);
@@ -29,11 +30,12 @@ function $packGeneric<T>(
 function $packNumber<T>(
 	value: T|ArrayLike<T>,
 	length: number|undefined,
-	method: (v: T) => void
+	method: (v: T) => void,
+	expectedType: string='number'
 	) {
 		if (length === undefined) {
-			if (typeof value !== 'number') throw(`PackPointer: Expected number, received ${value?.constructor.name} instead!`);
-			$$inline!(method, [value]);
+			if (typeof value !== expectedType) throw(`PackPointer: Expected ${expectedType}, received ${value?.constructor.name} instead!`);
+			$$inline!(method, [<T>value]);
 		}
 		else {
 			if (!isArrayLike(value)) throw(`PackPointer: Expected array-like, received ${value?.constructor.name} instead!`);
@@ -60,11 +62,11 @@ export class PackPointer implements Pointer {
 	}
 
 	position(): number {
-		return this._pos;
+		return this._pos - this._start;
 	}
 
 	length(): number {
-		return this._pos - this._start;
+		return this._end - this._start;
 	}
 
 	defer(length: number): Pointer {
@@ -84,7 +86,7 @@ export class PackPointer implements Pointer {
 	}
 
 	align(multiple: number, offset?: number): void {
-		this._pos = (offset ?? 0) + this._pos + (multiple - this._pos % multiple) % multiple;
+		this._pos = (offset ?? 0) + this._pos + this._start + (multiple - (this._pos - this._start) % multiple) % multiple;
 	}
 
 	bool(key: Key<boolean>): boolean;
@@ -95,15 +97,28 @@ export class PackPointer implements Pointer {
 			value => {
 				this._ctx.view.setUint8(this._pos, 0xff * +!!value);
 				this._pos ++;
-			}
+			},
+			'boolean'
 		);
 		return value;
 	}
 
-	struct(key: Key<Struct>): Struct;
-	struct(key: Key<Arr<Struct>>, length: number): Arr<Struct>;
-	struct(key: Key<Struct | Arr<Struct>>, length?: number): Struct | Arr<Struct> {
-		throw new Error('Method not implemented.');
+	struct(struct: Struct, key: Key<Unpacked>): Unpacked;
+	struct(struct: Struct, key: Key<Arr<Unpacked>>, length: number): Arr<Unpacked>;
+	struct(struct: Struct, key: Key<Unpacked | Arr<Unpacked>>, length?: number): Unpacked | Arr<Unpacked> {
+		const value = $key!(this._ctx, key);
+		$packGeneric!(value, length,
+			value => {
+				this._pos = struct.pack_into(value, this._ctx.buffer, this._pos);
+			},
+			(len, value) => {
+				for ( let i=0; i<len; i++ ) {
+					this._pos = struct.pack_into(value[i], this._ctx.buffer, this._pos);
+				}
+			},
+			'object'
+		);
+		return value;
 	}
 
 	str(key: Key<string>, length?: number): string {
@@ -132,7 +147,6 @@ export class PackPointer implements Pointer {
 	u8(key: Key<numbers>, length: number): numbers;
 	u8(key: Key<number | numbers>, length?: number): number | numbers {
 		const value = $key!(this._ctx, key);
-
 		$packGeneric!(value, length,
 			value => {
 				this._ctx.view.setUint8(this._pos, value);

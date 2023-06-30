@@ -1,4 +1,4 @@
-import type { Arr, Context, Key, Pointer, Struct, numbers } from './types.js';
+import type { Arr, Context, Key, Pointer, Struct, Unpacked, numbers } from './types.js';
 import { Literal, isArrayLike, untilTerminator } from './utils.js';
 
 // REPLACE THIS WITH A PROPER SOLUTION FOR ENDIANNESS!!
@@ -36,11 +36,11 @@ export class UnpackPointer implements Pointer {
 	}
 
 	position(): number {
-		return this._pos;
+		return this._pos - this._start;
 	}
 
 	length(): number {
-		return this._pos - this._start;
+		return this._end - this._start;
 	}
 
 	defer(length: number): Pointer {
@@ -51,8 +51,8 @@ export class UnpackPointer implements Pointer {
 
 	seek(position: number): void {
 		this._pos = position + this._start;
-		if (this._pos < this._start) throw(`PackPointer.seek: Attempted to seek past start boundary!`);
-		if (this._pos > this._end) throw(`PackPointer.seek: Attempted to seek past end boundary!`);
+		if (this._pos < this._start) throw(`UnpackPointer.seek: Attempted to seek past start boundary!`);
+		if (this._pos > this._end) throw(`UnpackPointer.seek: Attempted to seek past end boundary!`);
 	}
 
 	pad(length: number): void {
@@ -60,7 +60,7 @@ export class UnpackPointer implements Pointer {
 	}
 
 	align(multiple: number, offset?: number): void {
-		this._pos = (offset ?? 0) + this._pos + (multiple - this._pos % multiple) % multiple;
+		this._pos = (offset ?? 0) + this._pos + this._start + (multiple - (this._pos - this._start) % multiple) % multiple;
 	}
 
 	bool(key: Key<boolean>): boolean;
@@ -82,10 +82,25 @@ export class UnpackPointer implements Pointer {
 		return value;
 	}
 
-	struct(key: Key<Struct>): Struct;
-	struct(key: Key<Arr<Struct>>, length: number): Arr<Struct>;
-	struct(key: Key<Struct | Arr<Struct>>, length?: number): Struct | Arr<Struct> {
-		throw new Error('Method not implemented.');
+	struct(struct: Struct, key: Key<Unpacked>): Unpacked;
+	struct(struct: Struct, key: Key<Arr<Unpacked>>, length: number): Arr<Unpacked>;
+	struct(struct: Struct, key: Key<Unpacked | Arr<Unpacked>>, length?: number): Unpacked | Arr<Unpacked> {
+		let value;
+
+		if (length === undefined) {
+			value = <Unpacked>{};
+			this._pos = struct.unpack_into(value, this._ctx.buffer, this._pos);
+		}
+		else {
+			value = new Array<Unpacked>(length);
+			for ( let i=0; i<length; i++ ) {
+				value[i] = {};
+				this._pos = struct.unpack_into(value[i], this._ctx.buffer, this._pos);
+			}
+		}
+
+		$handleOut!(this, key, value);
+		return value;
 	}
 
 	str(key: Key<string>, length?: number): string {
