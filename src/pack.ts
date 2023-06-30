@@ -53,12 +53,14 @@ export class PackPointer implements Pointer {
 	_start: number;
 	_pos: number;
 	_end: number;
+	_little: boolean;
 
-	constructor(context: Context, start: number, end: number) {
+	constructor(context: Context, start: number, end: number, little: boolean) {
 		this._ctx = context;
 		this._start = start;
 		this._pos = start;
 		this._end = end;
+		this._little = little;
 	}
 
 	position(): number {
@@ -70,7 +72,7 @@ export class PackPointer implements Pointer {
 	}
 
 	defer(length: number): Pointer {
-		const pointer = new PackPointer(this._ctx, this._pos, this._pos + length);
+		const pointer = new PackPointer(this._ctx, this._pos, this._pos + length, this._little);
 		this._pos += length;
 		return pointer;
 	}
@@ -79,6 +81,11 @@ export class PackPointer implements Pointer {
 		this._pos = position + this._start;
 		if (this._pos < this._start) throw(`PackPointer.seek: Attempted to seek past start boundary!`);
 		if (this._pos > this._end) throw(`PackPointer.seek: Attempted to seek past end boundary!`);
+	}
+
+	order(little: boolean|'LE'|'BE'): void {
+		if (little === 'BE') this._little = false;
+		else this._little = !!little;
 	}
 
 	pad(length: number): void {

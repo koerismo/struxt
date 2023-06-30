@@ -23,7 +23,7 @@
 		"dist/*"
 	],
 	"scripts": {
-		"build": "tspc",
+		"build": "tspc && npm run format",
 		"test": "c8 mocha",
 		"format": "prettier --write dist/",
 		"publish": "npm run test && npm publish"

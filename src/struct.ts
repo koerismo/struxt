@@ -12,14 +12,14 @@ export class Struct {
 
 	pack_into(source: Unpacked, buffer: Packed, offset: number=0): number {
 		const ctx = new Context(source, buffer);
-		const ptr = new PackPointer(ctx, offset, buffer.byteLength);
+		const ptr = new PackPointer(ctx, offset, buffer.byteLength, false);
 		this.exec(ptr);
 		return ptr._pos;
 	}
 
 	unpack_into(target: Unpacked, buffer: Packed, offset: number=0): number {
 		const ctx = new Context(target, buffer);
-		const ptr = new UnpackPointer(ctx, offset, buffer.byteLength);
+		const ptr = new UnpackPointer(ctx, offset, buffer.byteLength, false);
 		this.exec(ptr);
 		return ptr._pos;
 	}

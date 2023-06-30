@@ -17,7 +17,6 @@ export type Length<Key> = Key extends null ? number : number|string;
 export type Arr<T> = ArrayLike<T>;
 export type numbers = Arr<number>;
 
-/** Navigates a DataView until a byte matching the terminator is encountered or the buffer ends. */
 export function untilTerminator(view: DataView, pointer: number, terminator: number, increment: number) {
 	const buffer_length = view.byteLength - view.byteOffset;
 	let i = pointer;
@@ -27,7 +26,6 @@ export function untilTerminator(view: DataView, pointer: number, terminator: num
 	}
 	return i;
 }
-
 
 export function isArrayLike(object: unknown): object is ArrayLike<any> {
 	if (typeof object !== 'object' || object == null) return false;

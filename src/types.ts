@@ -32,6 +32,9 @@ export interface Pointer {
 	// Go to the specified position relative to this pointer's starting bound.
 	seek(position: number): void;
 
+	// Sets the endianness of the pointer.
+	order(little: boolean|'LE'|'BE'): void;
+
 	// Alignment
 	pad(length: number): void;
 	align(multiple: number, offset?: number): void;
