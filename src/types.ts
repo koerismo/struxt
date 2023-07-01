@@ -26,9 +26,6 @@ export interface Pointer {
 	// Retrieves the relative position of the pointer to the beginning of this chunk.
 	length(): number;
 
-	// Allocate the specified length for a new pointer.
-	defer(length: number): Pointer;
-
 	// Go to the specified position relative to this pointer's starting bound.
 	seek(position: number): void;
 
@@ -38,6 +35,9 @@ export interface Pointer {
 	// Alignment
 	pad(length: number): void;
 	align(multiple: number, offset?: number): void;
+
+	// Allocate the specified length for a new pointer.
+	defer(length: number): Pointer;
 
 	// Bool
 	bool(key: Key<boolean>):									boolean;

@@ -1,9 +1,8 @@
-import { $$inline, $$text } from 'ts-macros';
+import { $$inline } from 'ts-macros';
+
 import type { Arr, Context, Key, Pointer, Struct, Unpacked, numbers } from './types.js';
 import { Literal, isArrayLike } from './utils.js';
-
-// REPLACE THIS WITH A PROPER SOLUTION FOR ENDIANNESS!!
-const REPLACE_LITTLE = false;
+import { SharedPointer } from './context.js';
 
 function $key<T>(ctx: Context, key: Key<T>): T {
 	return key instanceof Literal ? key.value : ctx.object[key];
@@ -48,52 +47,12 @@ function $packNumber<T>(
 
 const TE = new TextEncoder();
 
-export class PackPointer implements Pointer {
-	_ctx: Context;
-	_start: number;
-	_pos: number;
-	_end: number;
-	_little: boolean;
-
-	constructor(context: Context, start: number, end: number, little: boolean) {
-		this._ctx = context;
-		this._start = start;
-		this._pos = start;
-		this._end = end;
-		this._little = little;
-	}
-
-	position(): number {
-		return this._pos - this._start;
-	}
-
-	length(): number {
-		return this._end - this._start;
-	}
+export class PackPointer extends SharedPointer implements Pointer {
 
 	defer(length: number): Pointer {
 		const pointer = new PackPointer(this._ctx, this._pos, this._pos + length, this._little);
 		this._pos += length;
 		return pointer;
-	}
-
-	seek(position: number): void {
-		this._pos = position + this._start;
-		if (this._pos < this._start) throw(`PackPointer.seek: Attempted to seek past start boundary!`);
-		if (this._pos > this._end) throw(`PackPointer.seek: Attempted to seek past end boundary!`);
-	}
-
-	order(little: boolean|'LE'|'BE'): void {
-		if (little === 'BE') this._little = false;
-		else this._little = !!little;
-	}
-
-	pad(length: number): void {
-		this._pos += length;
-	}
-
-	align(multiple: number, offset?: number): void {
-		this._pos = (offset ?? 0) + this._pos + this._start + (multiple - (this._pos - this._start) % multiple) % multiple;
 	}
 
 	bool(key: Key<boolean>): boolean;
@@ -173,7 +132,7 @@ export class PackPointer implements Pointer {
 		const value = $key!(this._ctx, key);
 		$packNumber!(value, length,
 			value => {
-				this._ctx.view.setUint16(this._pos, value, REPLACE_LITTLE);
+				this._ctx.view.setUint16(this._pos, value, this._little);
 				this._pos += 2;
 			}
 		);
@@ -186,7 +145,7 @@ export class PackPointer implements Pointer {
 		const value = $key!(this._ctx, key);
 		$packNumber!(value, length,
 			value => {
-				this._ctx.view.setUint32(this._pos, value, REPLACE_LITTLE);
+				this._ctx.view.setUint32(this._pos, value, this._little);
 				this._pos += 4;
 			}
 		);
@@ -212,7 +171,7 @@ export class PackPointer implements Pointer {
 		const value = $key!(this._ctx, key);
 		$packNumber!(value, length,
 			value => {
-				this._ctx.view.setInt16(this._pos, value, REPLACE_LITTLE);
+				this._ctx.view.setInt16(this._pos, value, this._little);
 				this._pos += 2;
 			}
 		);
@@ -225,7 +184,7 @@ export class PackPointer implements Pointer {
 		const value = $key!(this._ctx, key);
 		$packNumber!(value, length,
 			value => {
-				this._ctx.view.setInt32(this._pos, value, REPLACE_LITTLE);
+				this._ctx.view.setInt32(this._pos, value, this._little);
 				this._pos += 4;
 			}
 		);
@@ -238,7 +197,7 @@ export class PackPointer implements Pointer {
 		const value = $key!(this._ctx, key);
 		$packNumber!(value, length,
 			value => {
-				this._ctx.view.setFloat32(this._pos, value, REPLACE_LITTLE);
+				this._ctx.view.setFloat32(this._pos, value, this._little);
 				this._pos += 4;
 			}
 		);
@@ -251,7 +210,7 @@ export class PackPointer implements Pointer {
 		const value = $key!(this._ctx, key);
 		$packNumber!(value, length,
 			value => {
-				this._ctx.view.setFloat64(this._pos, value, REPLACE_LITTLE);
+				this._ctx.view.setFloat64(this._pos, value, this._little);
 				this._pos += 8;
 			}
 		);
