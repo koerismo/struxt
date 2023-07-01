@@ -1,7 +1,7 @@
 {
 	"name": "struxt",
 	"author": "koerismo",
-	"description": "Functional binary structures for Javascript.",
+	"description": "Dynamic data structures for Javascript.",
 	"version": "3.0.0",
 	"private": "true",
 	"keywords": [
