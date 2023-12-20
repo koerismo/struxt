@@ -55,6 +55,31 @@ export class PackPointer extends SharedPointer implements Pointer {
 		return pointer;
 	}
 
+	/* bit(key: Key<boolean>): boolean;
+	bit(key: Key<Arr<boolean>>, length: number): Arr<boolean>;
+	bit(key: Key<boolean | Arr<boolean>>, length?: number): boolean | Arr<boolean> {
+		const value = $key!(this._ctx, key);
+		$packGeneric!(value, length,
+			value => {
+				this._ctx.view.setUint8(this._pos, +!!value);
+				this._pos ++;
+			},
+			(len, value) => {
+				let byte = 0;
+				for ( let i=0; i<len; i++) {
+					byte += (+!!value[i]) << (i%8);
+					if ((i+1)%8 === 0) {
+						this._ctx.view.setUint8(this._pos, byte);
+						byte = 0;
+						this._pos ++;
+					}
+				}
+			},
+			'boolean'
+		);
+		return value;
+	} */
+
 	bool(key: Key<boolean>): boolean;
 	bool(key: Key<Arr<boolean>>, length: number): Arr<boolean>;
 	bool(key: Key<boolean | Arr<boolean>>, length?: number): boolean | Arr<boolean> {

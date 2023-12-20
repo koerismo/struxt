@@ -52,8 +52,15 @@ export class UnpackPointer extends SharedPointer implements Pointer {
 	struct(struct: Struct, key: Key<Unpacked | Arr<Unpacked>>, length?: number): Unpacked | Arr<Unpacked> {
 		let value;
 
+		if (key instanceof Literal) {
+			value = key.value.constructor();
+		}
+		else {
+			self._ctx.object[key] = value;
+		}
+
 		if (length === undefined) {
-			value = <Unpacked>{};
+			value = this._ctx.object[key]
 			this._pos = struct.unpack_into(value, this._ctx.buffer, this._pos);
 		}
 		else {
