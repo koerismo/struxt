@@ -1,6 +1,14 @@
-import 'ts-macros';
 import { Struct } from './struct.js';
-import { toLiteral as Literal } from './utils.js';
+import { Literal } from './types.js';
 
-export { Struct, Literal }
+/** Constructs a new Literal. */
+export function to_literal<T>(value: T): Literal<T> {
+	return new Literal(value);
+}
+
 export default Struct;
+
+export {
+	Struct,
+	to_literal as Literal,
+}
