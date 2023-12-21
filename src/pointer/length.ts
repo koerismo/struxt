@@ -7,8 +7,8 @@ import { SharedPointer } from './shared.js';
 export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer implements Pointer<I> {
 	protected object: Unpacked;
 
-	constructor(object: Unpacked) {
-		super(<Context><unknown>null);
+	constructor(object: Unpacked, start: number, position: number, end: number) {
+		super(<Context><unknown>null, start, position, end);
 		this.object = object;
 	}
 
@@ -205,12 +205,12 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	}
 
 	defer(length: number): Pointer<I> {
-		const ref = new LengthPointer<I>(this.context);
+		const ref = new LengthPointer<I>(this.context, this.position, this.position, this.position + length);
 		this.position += length;
 		return ref;
 	}
 
-	pointer(type: 'i16' | 'i32', offset: number=0): (func: (ctx: Pointer<I>) => void) => void {
+	pointer(type: 'i16' | 'i32', relative: boolean=true, offset: number=0): (func: (ctx: Pointer<I>) => void) => void {
 		this.position += type === 'i16' ? 2 : 4;
 
 		return (func) => {

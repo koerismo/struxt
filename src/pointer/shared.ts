@@ -4,11 +4,17 @@ import type { Context, Pointer } from '../types.js';
 export class SharedPointer implements Partial<Pointer> {
 	protected context: Context;
 	protected little: boolean = false;
-	public position: number = 0;
 
-	constructor(context: Context, position: number=0) {
+	protected start: number;
+	protected position: number = 0;
+	protected end: number;
+
+	constructor(context: Context, start :number, position: number, end: number) {
 		this.context = context;
-		if (position != null) this.seek(position);
+		this.start = start;
+		this.end = end;
+		if (start > end || start < 0 || end > this.context.array.buffer.byteLength) throw `Pointer constructed with invalid range [${start} -> ${end}]`;
+		this.seek(position);
 	}
 
 	order(little: boolean|'LE'|'BE'): void {
@@ -25,8 +31,13 @@ export class SharedPointer implements Partial<Pointer> {
 	}
 
 	seek(position: number): void {
-		if (position < 0) throw(`Pointer.seek: Attempted to seek past start boundary!`);
-		if (position > this.context.array.length) throw(`Pointer.seek: Attempted to seek past end boundary!`);
+		if (position < this.start) throw(`Pointer.seek: Attempted to seek past start boundary!`);
+		if (position > this.end) throw(`Pointer.seek: Attempted to seek past end boundary!`);
 		this.position = position;
+	}
+
+	getpos(relative: boolean=true) {
+		if (relative) return this.position - this.start;
+		return this.position;
 	}
 }

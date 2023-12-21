@@ -217,7 +217,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		this.position = end;
 
 		if (length === undefined) {
-			for (end = start; end < this.context.array.length; end++)
+			for (end = start; end < this.end; end++)
 				if (this.context.view.getUint8(end) === 0) break;
 			this.position = end+1;
 		}
@@ -234,8 +234,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 
 		if (length === undefined) {
 			const value: Partial<V> = struct.type();
-			const offset = src_array.byteOffset + this.position;
-			this.position = struct.unpack(src_array.buffer, value, offset, src_array.length - this.position) - src_array.byteOffset;
+			this.position = struct.unpack(src_array.buffer, value, this.position, this.end - this.position);
 			this.#set_value(key, value);
 			return value as V;
 		}
@@ -243,8 +242,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		const values: Partial<V>[] = new Array(length);
 		for (let i=0; i<length; i++) {
 			values[i] = struct.type();
-			const offset = src_array.byteOffset + this.position;
-			this.position = struct.unpack(src_array.buffer, values[i], offset, src_array.length - this.position) - src_array.byteOffset;
+			this.position = struct.unpack(src_array.buffer, values[i], this.position, this.end - this.position);
 		}
 
 		this.#set_value(key, values);
@@ -252,15 +250,17 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	}
 
 	defer(length: number): Pointer<I> {
-		const ref = new UnpackPointer<I>(this.context, this.position);
+		const ref = new UnpackPointer<I>(this.context, this.position, this.position, this.position + length);
 		this.position += length;
 		return ref;
 	}
 
-	pointer(type: 'i16' | 'i32', offset: number=0): (func: (ctx: Pointer<I>) => void) => void {
+	pointer(type: 'i16' | 'i32', relative: boolean=true, offset: number=0): (func: (ctx: Pointer<I>) => void) => void {
 		const is_u16 = type === 'i16';
-		const value = this.context.view[is_u16 ? 'getInt16' : 'getInt32'](this.position, this.little);
-		const ref = new UnpackPointer<I>(this.context, value + offset);
+		if (relative) offset += this.start;
+		let start = this.context.view[is_u16 ? 'getInt16' : 'getInt32'](this.position, this.little) + offset;
+
+		const ref = new UnpackPointer<I>(this.context, start, start, this.end);
 		this.position += is_u16 ? 2 : 4;
 
 		return (func) => {

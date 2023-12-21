@@ -6,10 +6,10 @@ import { UnpackPointer } from './pointer/unpack.js';
 type ExecFunction<I extends Unpacked> = (ctx: Pointer<I>) => void;
 
 /** @internal */
-function create_context(buffer: ArrayBuffer, object: Unpacked, start: number, length: number): Context {
+function create_context(buffer: ArrayBuffer, object: Unpacked): Context {
 	return {
-		array: new Uint8Array(buffer, start, length),
-		view: new DataView(buffer, start, length),
+		array: new Uint8Array(buffer),
+		view: new DataView(buffer),
 		object: object,
 	}
 }
@@ -23,23 +23,26 @@ export class Struct<I extends Unpacked = Unpacked> {
 		this.type = type;
 	}
 
+	/** Dry-runs a struct pack operation and returns the expected length. */
 	length(source: Unpacked): number {
-		const ptr = new LengthPointer<I>(source);
+		const ptr = new LengthPointer<I>(source, 0, 0, Infinity);
 		this.exec(ptr);
-		return ptr.position;
+		return ptr.getpos(false);
 	}
 
-	pack(source: I, target: ArrayBuffer, offset: number=0, length: number=target.byteLength-offset): number {
-		const ctx = create_context(target, source, offset, length);
-		const ptr = new PackPointer<I>(ctx);
+	/** Packs the struct into the specified buffer, returning the new absolute pointer position. */
+	pack(source: I, target: ArrayBuffer, offset: number=0, length: number=target.byteLength-offset, skip_pointers: boolean=false): number {
+		const ctx = create_context(target, source);
+		const ptr = new PackPointer<I>(ctx, offset, offset, offset+length);
 		this.exec(ptr);
-		return ptr.position + offset;
+		return ptr.getpos(false);
 	}
 
-	unpack(source: ArrayBuffer, target: Partial<I>, offset: number=0, length: number=source.byteLength-offset): number {
-		const ctx = create_context(source, target, offset, length);
-		const ptr = new UnpackPointer<I>(ctx);
+	/** Unpacks the struct from the specified buffer, returning the new absolute pointer position. */
+	unpack(source: ArrayBuffer, target: Partial<I>, offset: number=0, length: number=source.byteLength-offset, skip_pointers: boolean=false): number {
+		const ctx = create_context(source, target);
+		const ptr = new UnpackPointer<I>(ctx, offset, offset, offset+length);
 		this.exec(ptr);
-		return ptr.position + offset;
+		return ptr.getpos(false);
 	}
 }

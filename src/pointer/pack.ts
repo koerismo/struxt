@@ -229,13 +229,14 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 	}
 
 	defer(length: number): Pointer<I> {
-		const ref = new PackPointer<I>(this.context, this.position);
+		const ref = new PackPointer<I>(this.context, this.position, this.position, this.position + length);
 		this.position += length;
 		return ref;
 	}
 
-	pointer(type: 'i16' | 'i32', offset: number=0): (func: (ctx: Pointer<I>) => void) => void {
+	pointer(type: 'i16' | 'i32', relative: boolean=true, offset: number=0): (func: (ctx: Pointer<I>) => void) => void {
 		const is_u16 = type === 'i16';
+		if (relative) offset += this.start;
 		const origin = this.position;
 		const little = this.little;
 		this.position += is_u16 ? 2 : 4;

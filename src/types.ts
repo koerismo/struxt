@@ -38,8 +38,6 @@ export interface Context {
 }
 
 export declare interface Pointer<I extends Unpacked = Unpacked> {
-	/** @readonly The position of the pointer. Use seek(position: number) to modify it! */
-	readonly position: number;
 
 	// Uint
 
@@ -96,15 +94,29 @@ export declare interface Pointer<I extends Unpacked = Unpacked> {
 	struct<V extends Unpacked>(struct: Struct<V>, key: AKey<I, V>, length: number): V[];
 	struct<V extends Unpacked>(struct: Struct<V>, key: Key<I, V>, length?: number): V | V[];
 
+	/** Consumes N bytes, returning another pointer at the original position */
 	defer(length: number): Pointer<I>;
 
-	pointer(type: 'i16'|'i32', offset?: number): (func: (ctx: Pointer<I>) => void) => void;
+	/** Returns a function that read/writes this pointer and modifies data at the target position.
+	 * @param type The datatype for the pointer.
+	 * @param relative Whether the pointer is relative to the struct's starting point. Defaults to true.
+	 * @param offset The offset of the pointer. Ex. (2 = move an additional two bytes)
+	 */
+	pointer(type: 'i16'|'i32', relative?: boolean, offset?: number): (func: (ctx: Pointer<I>) => void) => void;
 
 	// Shared
 
+	/** Sets the byte order of the struct. This does not carry over between structs!
+	 * @param little If a boolean is provided, true is equivalent to little-endian.
+	 */
 	order(little: boolean|'LE'|'BE'): void;
 
 	pad(length: number): void;
 
 	align(multiple: number, offset?: number): void;
+
+	/** Gets the position of the pointer in the buffer.
+	 * @param relative True by default. If set to false, the position will be reported relative to the start of the buffer instead of the struct.
+	*/
+	getpos(relative?: boolean): number;
 }
