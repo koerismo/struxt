@@ -1,5 +1,5 @@
 # Struxt
-Struxt is a portable zero-dependency library that abstracts binary packing/unpacking into reusable structures.
+Struxt is a lightweight portable library that abstracts binary packing/unpacking into reusable structures.
 
 ## An Introduction
 Rewritten from the ground up, struxt v3 allows developers to define data structures on-the-fly with Javascript code. This iteration features an api inspired by `smart-buffer` which allows data to be packed and unpacked via pointer methods.

@@ -1,8 +1,10 @@
-import type { SKey, AKey, Unpacked, Pointer, Key, Struct, key } from '../types.js';
+import type { SKey, AKey, Unpacked, Pointer, Key, key } from '../types.js';
+import type { Struct } from '../struct.js';
 import { Literal } from '../types.js';
 import { SharedPointer } from './shared.js';
 import equal from 'fast-deep-equal';
 
+/** @internal Use the generic Pointer<I> for types instead! */
 function assert_equal<T extends Object>(actual: Object, expected: T): asserts actual is T {
 	if (!equal(actual, expected)) `Failed to match literal value!`;
 	// if (typeof expected !== typeof actual) throw `Assert: value type ${typeof actual} does not match expected type ${typeof expected}!`;
@@ -24,6 +26,7 @@ function assert_equal<T extends Object>(actual: Object, expected: T): asserts ac
 
 const TD = new TextDecoder();
 
+/** @internal */
 export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer implements Pointer<I> {
 	#set_value(key: Key<I, any>, value: any) {
 		if (key instanceof Literal) assert_equal(value, key.value);
@@ -51,7 +54,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	u16(key: AKey<I, number>, length: number): Uint16Array;
 	u16(key: Key<I, number>, length?: number | undefined): number | Uint16Array {
 		if (length === undefined) {
-			const value = this.context.view.getUint16(this.position);
+			const value = this.context.view.getUint16(this.position, this.little);
 			this.#set_value(key, value);
 			this.position += 2;
 			return value;
@@ -69,7 +72,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	u32(key: AKey<I, number>, length: number): Uint32Array;
 	u32(key: Key<I, number>, length?: number | undefined): number | Uint32Array {
 		if (length === undefined) {
-			const value = this.context.view.getUint32(this.position);
+			const value = this.context.view.getUint32(this.position, this.little);
 			this.#set_value(key, value);
 			this.position += 4;
 			return value;
@@ -79,6 +82,24 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		this.position += length * 4;
 		const arr = new Uint32Array(length);
 		for ( let i=0; i<length; i++ ) arr[i] = this.context.view.getUint32(start + i*4, this.little);
+		this.#set_value(key, arr);
+		return arr;
+	}
+
+	u64(key: SKey<I, bigint>): bigint;
+	u64(key: AKey<I, bigint>, length: number): BigUint64Array;
+	u64(key: Key<I, bigint>, length?: number | undefined): bigint | BigUint64Array {
+		if (length === undefined) {
+			const value = this.context.view.getBigUint64(this.position, this.little);
+			this.#set_value(key, value);
+			this.position += 8;
+			return value;
+		}
+
+		const start = this.position;
+		this.position += length * 8;
+		const arr = new BigUint64Array(length);
+		for ( let i=0; i<length; i++ ) arr[i] = this.context.view.getBigUint64(start + i*8, this.little);
 		this.#set_value(key, arr);
 		return arr;
 	}
@@ -104,7 +125,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	i16(key: AKey<I, number>, length: number): Int16Array;
 	i16(key: Key<I, number>, length?: number | undefined): number | Int16Array {
 		if (length === undefined) {
-			const value = this.context.view.getInt16(this.position);
+			const value = this.context.view.getInt16(this.position, this.little);
 			this.#set_value(key, value);
 			this.position += 2;
 			return value;
@@ -122,7 +143,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	i32(key: AKey<I, number>, length: number): Int32Array;
 	i32(key: Key<I, number>, length?: number | undefined): number | Int32Array {
 		if (length === undefined) {
-			const value = this.context.view.getInt32(this.position);
+			const value = this.context.view.getInt32(this.position, this.little);
 			this.#set_value(key, value);
 			this.position += 4;
 			return value;
@@ -136,11 +157,29 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		return arr;
 	}
 
+	i64(key: SKey<I, bigint>): bigint;
+	i64(key: AKey<I, bigint>, length: number): BigInt64Array;
+	i64(key: Key<I, bigint>, length?: number | undefined): bigint | BigInt64Array {
+		if (length === undefined) {
+			const value = this.context.view.getBigInt64(this.position, this.little);
+			this.#set_value(key, value);
+			this.position += 8;
+			return value;
+		}
+
+		const start = this.position;
+		this.position += length * 8;
+		const arr = new BigInt64Array(length);
+		for ( let i=0; i<length; i++ ) arr[i] = this.context.view.getBigInt64(start + i*8, this.little);
+		this.#set_value(key, arr);
+		return arr;
+	}
+
 	f32(key: SKey<I, number>): number;
 	f32(key: AKey<I, number>, length: number): Float32Array;
 	f32(key: Key<I, number>, length?: number | undefined): number | Float32Array {
 		if (length === undefined) {
-			const value = this.context.view.getFloat32(this.position);
+			const value = this.context.view.getFloat32(this.position, this.little);
 			this.#set_value(key, value);
 			this.position += 4;
 			return value;
@@ -158,7 +197,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	f64(key: AKey<I, number>, length: number): Float64Array;
 	f64(key: Key<I, number>, length?: number | undefined): number | Float64Array {
 		if (length === undefined) {
-			const value = this.context.view.getFloat64(this.position);
+			const value = this.context.view.getFloat64(this.position, this.little);
 			this.#set_value(key, value);
 			this.position += 8;
 			return value;
@@ -196,7 +235,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		if (length === undefined) {
 			const value: Partial<V> = struct.type();
 			const offset = src_array.byteOffset + this.position;
-			this.position = struct.unpack(src_array.buffer, value, offset, src_array.length - offset);
+			this.position = struct.unpack(src_array.buffer, value, offset, src_array.length - this.position) - src_array.byteOffset;
 			this.#set_value(key, value);
 			return value as V;
 		}
@@ -205,7 +244,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		for (let i=0; i<length; i++) {
 			values[i] = struct.type();
 			const offset = src_array.byteOffset + this.position;
-			this.position = struct.unpack(src_array.buffer, values[i], offset, src_array.length - offset);
+			this.position = struct.unpack(src_array.buffer, values[i], offset, src_array.length - this.position) - src_array.byteOffset;
 		}
 
 		this.#set_value(key, values);
@@ -218,10 +257,11 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		return ref;
 	}
 
-	pointer(type: 'u16' | 'u32', offset: number=0): (func: (ctx: Pointer<I>) => void) => void {
-		const value = this.context.view.getUint16(this.position, this.little);
+	pointer(type: 'i16' | 'i32', offset: number=0): (func: (ctx: Pointer<I>) => void) => void {
+		const is_u16 = type === 'i16';
+		const value = this.context.view[is_u16 ? 'getInt16' : 'getInt32'](this.position, this.little);
 		const ref = new UnpackPointer<I>(this.context, value + offset);
-		this.position += 2;
+		this.position += is_u16 ? 2 : 4;
 
 		return (func) => {
 			func(ref);

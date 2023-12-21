@@ -8,6 +8,7 @@
 		"lib": [ "DOM", "ES2020" ],
 		"moduleResolution": "node",
 		"esModuleInterop": true,
+		"stripInternal": true,
 		"declaration": true,
 		"alwaysStrict": true,
 		"strict": true,

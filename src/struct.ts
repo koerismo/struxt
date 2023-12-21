@@ -1,11 +1,12 @@
-import type * as spec from './types.js';
+import type { Unpacked, Context, Pointer } from './types.js';
 import { LengthPointer } from './pointer/length.js';
 import { PackPointer } from './pointer/pack.js';
 import { UnpackPointer } from './pointer/unpack.js';
 
-type ExecFunction<I extends spec.Unpacked> = (ctx: spec.Pointer<I>) => void;
+type ExecFunction<I extends Unpacked> = (ctx: Pointer<I>) => void;
 
-function create_context(buffer: ArrayBuffer, object: spec.Unpacked, start: number, length: number): spec.Context {
+/** @internal */
+function create_context(buffer: ArrayBuffer, object: Unpacked, start: number, length: number): Context {
 	return {
 		array: new Uint8Array(buffer, start, length),
 		view: new DataView(buffer, start, length),
@@ -13,7 +14,7 @@ function create_context(buffer: ArrayBuffer, object: spec.Unpacked, start: numbe
 	}
 }
 
-export class Struct<I extends spec.Unpacked = spec.Unpacked> implements spec.Struct<I> {
+export class Struct<I extends Unpacked = Unpacked> {
 	private exec: ExecFunction<I>;
 	type: () => object;
 
@@ -22,7 +23,7 @@ export class Struct<I extends spec.Unpacked = spec.Unpacked> implements spec.Str
 		this.type = type;
 	}
 
-	length(source: spec.Unpacked): number {
+	length(source: Unpacked): number {
 		const ptr = new LengthPointer<I>(source);
 		this.exec(ptr);
 		return ptr.position;

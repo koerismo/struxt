@@ -1,6 +1,7 @@
-import type { Context } from '../types.js';
+import type { Context, Pointer } from '../types.js';
 
-export class SharedPointer {
+/** @internal This is a partially-implemented pointer class for shared methods. */
+export class SharedPointer implements Partial<Pointer> {
 	protected context: Context;
 	protected little: boolean = false;
 	public position: number = 0;

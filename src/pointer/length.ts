@@ -1,7 +1,9 @@
-import type { SKey, AKey, Unpacked, Pointer, Context, Key, TypeNameMap, Struct, key } from '../types.js';
+import type { SKey, AKey, Unpacked, Pointer, Context, Key, TypeNameMap, key } from '../types.js';
+import type { Struct } from '../struct.js';
 import { Literal } from '../types.js';
 import { SharedPointer } from './shared.js';
 
+/** @internal Use the generic Pointer<I> for types instead! */
 export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer implements Pointer<I> {
 	protected object: Unpacked;
 
@@ -73,6 +75,20 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		return value;
 	}
 
+	u64(key: SKey<I, bigint>): bigint;
+	u64(key: AKey<I, bigint>, length: number): BigUint64Array;
+	u64(key: Key<I, bigint>, length?: number): bigint | BigUint64Array {
+		if (length === undefined) {
+			const value = this.#get_single_value(<key>key, 'bigint');
+			this.position += 8;
+			return value;
+		}
+
+		const value = new BigUint64Array(this.#get_array_value(<key>key, length) as BigUint64Array);
+		this.position += length * 8;
+		return value;
+	}
+
 	i8(key: SKey<I, number>): number;
 	i8(key: AKey<I, number>, length: number): Int8Array;
 	i8(key: Key<I, number>, length?: number): number | Int8Array {
@@ -112,6 +128,20 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 
 		const value = new Int32Array(this.#get_array_value(<key>key, length));
 		this.position += length * 4;
+		return value;
+	}
+
+	i64(key: SKey<I, bigint>): bigint;
+	i64(key: AKey<I, bigint>, length: number): BigInt64Array;
+	i64(key: Key<I, bigint>, length?: number): bigint | BigInt64Array {
+		if (length === undefined) {
+			const value = this.#get_single_value(<key>key, 'bigint');
+			this.position += 8;
+			return value;
+		}
+
+		const value = new BigInt64Array(this.#get_array_value(<key>key, length) as BigInt64Array);
+		this.position += length * 8;
 		return value;
 	}
 
@@ -180,8 +210,8 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		return ref;
 	}
 
-	pointer(type: 'u16' | 'u32', offset: number=0): (func: (ctx: Pointer<I>) => void) => void {
-		this.position += 2;
+	pointer(type: 'i16' | 'i32', offset: number=0): (func: (ctx: Pointer<I>) => void) => void {
+		this.position += type === 'i16' ? 2 : 4;
 
 		return (func) => {
 			func(this);

@@ -1,9 +1,11 @@
-import type { SKey, AKey, Unpacked, Pointer, Key, TypeNameMap, Struct, key } from '../types.js';
+import type { SKey, AKey, Unpacked, Pointer, Key, TypeNameMap, key } from '../types.js';
+import type { Struct } from '../struct.js';
 import { Literal } from '../types.js';
 import { SharedPointer } from './shared.js';
 
 const TE = new TextEncoder();
 
+/** @internal Use the generic Pointer<I> for types instead! */
 export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer implements Pointer<I> {
 
 	#get_single_value<K extends keyof TypeNameMap>(key: key|Literal<any>, type: K): TypeNameMap[K] {
@@ -41,7 +43,7 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 	u16(key: Key<I, number>, length?: number): number | Uint16Array {
 		if (length === undefined) {
 			const value = this.#get_single_value(<key>key, 'number');
-			this.context.view.setUint16(this.position, value);
+			this.context.view.setUint16(this.position, value, this.little);
 			this.position += 2;
 			return value;
 		}
@@ -58,7 +60,7 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 	u32(key: Key<I, number>, length?: number): number | Uint32Array {
 		if (length === undefined) {
 			const value = this.#get_single_value(<key>key, 'number');
-			this.context.view.setUint32(this.position, value);
+			this.context.view.setUint32(this.position, value, this.little);
 			this.position += 4;
 			return value;
 		}
@@ -67,6 +69,23 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 		const start = this.position;
 		this.position += length * 4;
 		for (let i=0; i<value.length; i++) this.context.view.setUint32(start + i*4, value[i], this.little);
+		return value;
+	}
+
+	u64(key: SKey<I, bigint>): bigint;
+	u64(key: AKey<I, bigint>, length: number): BigUint64Array;
+	u64(key: Key<I, bigint>, length?: number): bigint | BigUint64Array {
+		if (length === undefined) {
+			const value = this.#get_single_value(<key>key, 'bigint');
+			this.context.view.setBigUint64(this.position, value, this.little);
+			this.position += 8;
+			return value;
+		}
+
+		const value = new BigUint64Array(this.#get_array_value(<key>key, length) as BigUint64Array);
+		const start = this.position;
+		this.position += length * 8;
+		for (let i=0; i<value.length; i++) this.context.view.setBigUint64(start + i*8, value[i], this.little);
 		return value;
 	}
 
@@ -91,7 +110,7 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 	i16(key: Key<I, number>, length?: number): number | Int16Array {
 		if (length === undefined) {
 			const value = this.#get_single_value(<key>key, 'number');
-			this.context.view.setInt16(this.position, value);
+			this.context.view.setInt16(this.position, value, this.little);
 			this.position += 2;
 			return value;
 		}
@@ -108,7 +127,7 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 	i32(key: Key<I, number>, length?: number): number | Int32Array {
 		if (length === undefined) {
 			const value = this.#get_single_value(<key>key, 'number');
-			this.context.view.setInt32(this.position, value);
+			this.context.view.setInt32(this.position, value, this.little);
 			this.position += 4;
 			return value;
 		}
@@ -120,12 +139,29 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 		return value;
 	}
 
+	i64(key: SKey<I, bigint>): bigint;
+	i64(key: AKey<I, bigint>, length: number): BigInt64Array;
+	i64(key: Key<I, bigint>, length?: number): bigint | BigInt64Array {
+		if (length === undefined) {
+			const value = this.#get_single_value(<key>key, 'bigint');
+			this.context.view.setBigInt64(this.position, value, this.little);
+			this.position += 8;
+			return value;
+		}
+
+		const value = new BigInt64Array(this.#get_array_value(<key>key, length) as BigInt64Array);
+		const start = this.position;
+		this.position += length * 8;
+		for (let i=0; i<value.length; i++) this.context.view.setBigInt64(start + i*8, value[i], this.little);
+		return value;
+	}
+
 	f32(key: SKey<I, number>): number;
 	f32(key: AKey<I, number>, length: number): Float32Array;
 	f32(key: Key<I, number>, length?: number): number | Float32Array {
 		if (length === undefined) {
 			const value = this.#get_single_value(<key>key, 'number');
-			this.context.view.setFloat32(this.position, value);
+			this.context.view.setFloat32(this.position, value, this.little);
 			this.position += 4;
 			return value;
 		}
@@ -142,7 +178,7 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 	f64(key: Key<I, number>, length?: number): number | Float64Array {
 		if (length === undefined) {
 			const value = this.#get_single_value(<key>key, 'number');
-			this.context.view.setFloat32(this.position, value);
+			this.context.view.setFloat32(this.position, value, this.little);
 			this.position += 8;
 			return value;
 		}
@@ -198,13 +234,14 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 		return ref;
 	}
 
-	pointer(type: 'u16' | 'u32', offset: number=0): (func: (ctx: Pointer<I>) => void) => void {
+	pointer(type: 'i16' | 'i32', offset: number=0): (func: (ctx: Pointer<I>) => void) => void {
+		const is_u16 = type === 'i16';
 		const origin = this.position;
 		const little = this.little;
-		this.position += 2;
+		this.position += is_u16 ? 2 : 4;
 
 		return (func) => {
-			this.context.view.setUint16(origin, this.position - offset, little);
+			this.context.view[is_u16 ? 'setInt16' : 'setInt32'](origin, this.position - offset, little);
 			func(this);
 		}
 	}

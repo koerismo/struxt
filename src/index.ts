@@ -1,14 +1,15 @@
 import { Struct } from './struct.js';
-import { Literal } from './types.js';
+import { Literal as LiteralType } from './types.js';
 
 /** Constructs a new Literal. */
-export function to_literal<T>(value: T): Literal<T> {
-	return new Literal(value);
+function Literal<T>(value: T): LiteralType<T> {
+	return new LiteralType(value);
 }
 
 export default Struct;
 
 export {
 	Struct,
-	to_literal as Literal,
+	Literal,
+	LiteralType
 }

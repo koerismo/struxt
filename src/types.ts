@@ -1,3 +1,5 @@
+import type { Struct } from './struct.js';
+
 type KeysMatching<I, T> = {[K in keyof I]: I[K] extends T ? K : never}[keyof I];
 
 export class Literal<T> {
@@ -19,6 +21,7 @@ export type SKey<I, T> = KeysMatching<I, T> | Literal<T>;
 export type AKey<I, T> = KeysMatching<I, ArrayLike<T>> | Literal<ArrayLike<T>>;
 export type Key<I, T> = SKey<I, T> | AKey<I, T>;
 
+/** @internal */
 export interface TypeNameMap {
 	'string': string,
 	'number': number,
@@ -27,27 +30,14 @@ export interface TypeNameMap {
 	'object':  object,
 }
 
-export interface StructConstructor {
-	new<I extends Unpacked = Unpacked>(exec: (ctx: Pointer<I>) => void): Struct<I>;
-}
-
-export interface Struct<I extends Unpacked> {
-	type: () => object;
-
-	length(source: I): number;
-
-	pack(source: I, target: ArrayBuffer|Uint8Array, offset?: number, length?: number): number;
-
-	unpack(source: ArrayBuffer|Uint8Array, target: Partial<I>, offset?: number, length?: number): number;
-}
-
+/** @internal */
 export interface Context {
 	object:	Unpacked;
 	view:	DataView;
 	array:	Uint8Array;
 }
 
-export declare interface Pointer<I extends Unpacked> {
+export declare interface Pointer<I extends Unpacked = Unpacked> {
 	/** @readonly The position of the pointer. Use seek(position: number) to modify it! */
 	readonly position: number;
 
@@ -65,9 +55,9 @@ export declare interface Pointer<I extends Unpacked> {
 	u32(key: AKey<I, number>, length: number): Uint32Array;
 	u32(key: Key<I, number>,  length?: number): number | Uint32Array;
 
-	// u64(key: SKey<I, bigint>): bigint;
-	// u64(key: AKey<I, bigint>, length: number): BigUint64Array;
-	// u64(key: Key<I, bigint>, length: number): number | BigUint64Array;
+	u64(key: SKey<I, bigint>): bigint;
+	u64(key: AKey<I, bigint>, length: number): BigUint64Array;
+	u64(key: Key<I, bigint>, length: number): bigint | BigUint64Array;
 
 	// Int
 
@@ -83,9 +73,9 @@ export declare interface Pointer<I extends Unpacked> {
 	i32(key: AKey<I, number>, length: number): Int32Array;
 	i32(key: Key<I, number>,  length?: number): number | Int32Array;
 
-	// i64(key: SKey<I, bigint>): bigint;
-	// i64(key: AKey<I, bigint>, length: number): BigInt64Array;
-	// i64(key: Key<I, bigint>, length: number): bigint | BigInt64Array;
+	i64(key: SKey<I, bigint>): bigint;
+	i64(key: AKey<I, bigint>, length: number): BigInt64Array;
+	i64(key: Key<I, bigint>, length: number): bigint | BigInt64Array;
 
 	// Float
 
@@ -108,7 +98,7 @@ export declare interface Pointer<I extends Unpacked> {
 
 	defer(length: number): Pointer<I>;
 
-	pointer(type: 'u16'|'u32', offset?: number): (func: (ctx: Pointer<I>) => void) => void;
+	pointer(type: 'i16'|'i32', offset?: number): (func: (ctx: Pointer<I>) => void) => void;
 
 	// Shared
 
