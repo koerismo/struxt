@@ -1,4 +1,4 @@
-import type { Context } from './types.js';
+import type { Context } from '../types.js';
 
 export class SharedPointer {
 	protected context: Context;

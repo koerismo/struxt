@@ -1,30 +1,22 @@
-import { SharedPointer } from './pointer.js';
-import type { SKey, AKey, Unpacked, Pointer, Context, Key, TypeNameMap, Struct, key } from './types.js';
+import type { SKey, AKey, Unpacked, Pointer, Key, TypeNameMap, Struct, key } from '../types.js';
+import { Literal } from '../types.js';
+import { SharedPointer } from './shared.js';
 
-export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer implements Pointer<I> {
-	protected object: Unpacked;
+const TE = new TextEncoder();
 
-	constructor(object: Unpacked) {
-		super(<Context><unknown>null);
-		this.object = object;
-	}
+export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer implements Pointer<I> {
 
-	seek(position: number): void {
-		if (position < 0) throw(`Pointer.seek: Attempted to seek past start boundary!`);
-		this.position = position;
-	}
-
-	#get_single_value<K extends keyof TypeNameMap>(key: key, type: K): TypeNameMap[K] {
-		const v = this.object[key];
-		if (typeof v !== type) throw `Expected type ${type} for key "${key}", but got ${typeof v} instead!`;
-		if (v == null) throw `Expected type ${type} for key "${key}", but got null/undefined instead!`;
+	#get_single_value<K extends keyof TypeNameMap>(key: key|Literal<any>, type: K): TypeNameMap[K] {
+		const v = key instanceof Literal ? key.value : this.context.object[key];
+		if (typeof v !== type) throw `Expected type ${type} for key ${key.toString()}, but got ${typeof v} instead!`;
+		if (v == null) throw `Expected type ${type} for key ${key.toString()}, but got null/undefined instead!`;
 		return v;
 	}
 
-	#get_array_value(key: key, length: number): ArrayLike<any> {
-		const v = this.object[key];
-		if (v == null || typeof v !== 'object') throw `Expected array for key "${key}", but got ${typeof v} instead!`;
-		if (v.length !== length) throw `Expected array of length ${length} for key "${key}", but got ${v.length} instead!`;
+	#get_array_value(key: key|Literal<any>, length: number): ArrayLike<any> {
+		const v = key instanceof Literal ? key.value : this.context.object[key];
+		if (v == null || typeof v !== 'object') throw `Expected array for key ${key.toString()}, but got ${typeof v} instead!`;
+		if (v.length !== length) throw `Expected array of length ${length} for key ${key.toString()}, but got ${v.length} instead!`;
 		return v;
 	}
 
@@ -33,11 +25,13 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	u8(key: Key<I, number>,  length?: number): number | Uint8Array {
 		if (length === undefined) {
 			const value = this.#get_single_value(<key>key, 'number');
+			this.context.view.setUint8(this.position, value);
 			this.position ++;
 			return value;
 		}
 
-		const value = new Uint8Array(this.#get_array_value(<key>key, length));
+		const value = new Uint8Array(this.#get_array_value(<string>key, length));
+		this.context.array.set(value, this.position);
 		this.position += length;
 		return value;
 	}
@@ -47,12 +41,15 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	u16(key: Key<I, number>, length?: number): number | Uint16Array {
 		if (length === undefined) {
 			const value = this.#get_single_value(<key>key, 'number');
+			this.context.view.setUint16(this.position, value);
 			this.position += 2;
 			return value;
 		}
 
-		const value = new Uint16Array(this.#get_array_value(<key>key, length));
+		const value = new Uint16Array(this.#get_array_value(<string>key, length));
+		const start = this.position;
 		this.position += length * 2;
+		for (let i=0; i<value.length; i++) this.context.view.setUint16(start + i*2, value[i], this.little);
 		return value;
 	}
 
@@ -61,12 +58,15 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	u32(key: Key<I, number>, length?: number): number | Uint32Array {
 		if (length === undefined) {
 			const value = this.#get_single_value(<key>key, 'number');
+			this.context.view.setUint32(this.position, value);
 			this.position += 4;
 			return value;
 		}
 
 		const value = new Uint32Array(this.#get_array_value(<key>key, length));
+		const start = this.position;
 		this.position += length * 4;
+		for (let i=0; i<value.length; i++) this.context.view.setUint32(start + i*4, value[i], this.little);
 		return value;
 	}
 
@@ -75,11 +75,13 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	i8(key: Key<I, number>, length?: number): number | Int8Array {
 		if (length === undefined) {
 			const value = this.#get_single_value(<key>key, 'number');
+			this.context.view.setInt8(this.position, value);
 			this.position ++;
 			return value;
 		}
 
 		const value = new Int8Array(this.#get_array_value(<key>key, length));
+		this.context.array.set(value, this.position);
 		this.position += length;
 		return value;
 	}
@@ -89,12 +91,15 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	i16(key: Key<I, number>, length?: number): number | Int16Array {
 		if (length === undefined) {
 			const value = this.#get_single_value(<key>key, 'number');
+			this.context.view.setInt16(this.position, value);
 			this.position += 2;
 			return value;
 		}
 
-		const value = new Int16Array(this.#get_array_value(<key>key, length));
+		const value = new Int16Array(this.#get_array_value(<string>key, length));
+		const start = this.position;
 		this.position += length * 2;
+		for (let i=0; i<value.length; i++) this.context.view.setInt16(start + i*2, value[i], this.little);
 		return value;
 	}
 
@@ -103,12 +108,15 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	i32(key: Key<I, number>, length?: number): number | Int32Array {
 		if (length === undefined) {
 			const value = this.#get_single_value(<key>key, 'number');
+			this.context.view.setInt32(this.position, value);
 			this.position += 4;
 			return value;
 		}
 
 		const value = new Int32Array(this.#get_array_value(<key>key, length));
+		const start = this.position;
 		this.position += length * 4;
+		for (let i=0; i<value.length; i++) this.context.view.setInt32(start + i*4, value[i], this.little);
 		return value;
 	}
 
@@ -117,12 +125,15 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	f32(key: Key<I, number>, length?: number): number | Float32Array {
 		if (length === undefined) {
 			const value = this.#get_single_value(<key>key, 'number');
+			this.context.view.setFloat32(this.position, value);
 			this.position += 4;
 			return value;
 		}
 
 		const value = new Float32Array(this.#get_array_value(<key>key, length));
+		const start = this.position;
 		this.position += length * 4;
+		for (let i=0; i<value.length; i++) this.context.view.setFloat32(start + i*4, value[i], this.little);
 		return value;
 	}
 
@@ -131,25 +142,31 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	f64(key: Key<I, number>, length?: number): number | Float64Array {
 		if (length === undefined) {
 			const value = this.#get_single_value(<key>key, 'number');
+			this.context.view.setFloat32(this.position, value);
 			this.position += 8;
 			return value;
 		}
 
 		const value = new Float64Array(this.#get_array_value(<key>key, length));
+		const start = this.position;
 		this.position += length * 8;
+		for (let i=0; i<value.length; i++) this.context.view.setFloat64(start + i*8, value[i], this.little);
 		return value;
 	}
 
 	str(key: SKey<I, string>): string;
 	str(key: SKey<I, string>, length?: number): string {
 		const value = this.#get_single_value(<key>key, 'string');
-		this.position += value.length;
+		const ref = new Uint8Array(this.context.array.buffer, this.context.array.byteOffset + this.position, this.context.array.byteLength - this.position);
+
+		TE.encodeInto(value, ref);
+		this.position += value.length
 
 		if (length === undefined) {
 			this.position ++;
 		}
 		else if (value.length !== length) {
-			throw `Expected a string of length ${length} for key "${<key>key}", but got ${value.length} instead!`;
+			throw `Expected a string of length ${length} for key ${<key>key}, but got ${value.length} instead!`;
 		}
 
 		return value;
@@ -157,30 +174,37 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 
 	struct<V extends Unpacked>(struct: Struct<V>, key: SKey<I, V>): V;
 	struct<V extends Unpacked>(struct: Struct<V>, key: AKey<I, V>, length: number): V[];
-	struct<V extends Unpacked>(struct: Struct<V>, key: Key<I, V>, length?: number): V | V[]  {
+	struct<V extends Unpacked>(struct: Struct<V>, key: Key<I, V>, length?: number): V | V[] {
+		const src_array = this.context.array;
+
 		if (length === undefined) {
 			const value = this.#get_single_value(<key>key, 'object') as V;
-			this.position += struct.length(value);
+			const offset = src_array.byteOffset + this.position;
+			this.position = struct.pack(value, src_array.buffer, offset, src_array.length - offset);
 			return value;
 		}
 
 		const values = this.#get_array_value(<key>key, length) as V[];
 		for (let i=0; i<length; i++) {
-			this.position += struct.length(values[i]);
+			const offset = src_array.byteOffset + this.position;
+			this.position = struct.pack(values[i], src_array.buffer, offset, src_array.length - offset);
 		}
 		return values;
 	}
 
 	defer(length: number): Pointer<I> {
-		const ref = new LengthPointer<I>(this.context);
+		const ref = new PackPointer<I>(this.context, this.position);
 		this.position += length;
 		return ref;
 	}
 
 	pointer(type: 'u16' | 'u32', offset: number=0): (func: (ctx: Pointer<I>) => void) => void {
+		const origin = this.position;
+		const little = this.little;
 		this.position += 2;
 
 		return (func) => {
+			this.context.view.setUint16(origin, this.position - offset, little);
 			func(this);
 		}
 	}

@@ -1,7 +1,7 @@
 import type * as spec from './types.js';
-import { LengthPointer } from './length.js';
-import { PackPointer } from './pack.js';
-import { UnpackPointer } from './unpack.js';
+import { LengthPointer } from './pointer/length.js';
+import { PackPointer } from './pointer/pack.js';
+import { UnpackPointer } from './pointer/unpack.js';
 
 type ExecFunction<I extends spec.Unpacked> = (ctx: spec.Pointer<I>) => void;
 
@@ -15,9 +15,11 @@ function create_context(buffer: ArrayBuffer, object: spec.Unpacked, start: numbe
 
 export class Struct<I extends spec.Unpacked = spec.Unpacked> implements spec.Struct<I> {
 	private exec: ExecFunction<I>;
+	type: () => object;
 
-	constructor(exec: ExecFunction<I>) {
+	constructor(exec: ExecFunction<I>, type: (() => object)=Object) {
 		this.exec = exec;
+		this.type = type;
 	}
 
 	length(source: spec.Unpacked): number {
