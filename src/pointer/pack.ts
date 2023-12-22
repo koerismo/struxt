@@ -1,5 +1,5 @@
-import type { SKey, AKey, Unpacked, Pointer, Key, TypeNameMap, key } from '../types.js';
-import type { Struct } from '../struct.js';
+import type { SKey, AKey, Unpacked, Pointer, Key, TypeNameMap, key, Resolvable, Context } from '../types.js';
+import { create_context, type Struct } from '../struct.js';
 import { Literal } from '../types.js';
 import { SharedPointer } from './shared.js';
 
@@ -7,6 +7,13 @@ const TE = new TextEncoder();
 
 /** @internal Use the generic Pointer<I> for types instead! */
 export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer implements Pointer<I> {
+	/** @internal */
+	level: number;
+
+	constructor(context: Context, start :number, position: number, end: number, level: number=0) {
+		super(context, start, position, end);
+		this.level = level;
+	}
 
 	#get_single_value<K extends keyof TypeNameMap>(key: key|Literal<any>, type: K): TypeNameMap[K] {
 		const v = key instanceof Literal ? key.value : this.context.object[key];
@@ -208,22 +215,25 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 		return value;
 	}
 
+	#exec_struct<T extends Unpacked>(struct: Struct<T>, object: Partial<Unpacked>, start: number, end: number) {
+		const ctx = create_context(this.context.array.buffer, object, this.context.pointers);
+		const ptr = new PackPointer<T>(ctx, start, start, end, this.level);
+		struct.exec(ptr);
+		return ptr.getpos(false);
+	}
+
 	struct<V extends Unpacked>(struct: Struct<V>, key: SKey<I, V>): V;
 	struct<V extends Unpacked>(struct: Struct<V>, key: AKey<I, V>, length: number): V[];
 	struct<V extends Unpacked>(struct: Struct<V>, key: Key<I, V>, length?: number): V | V[] {
-		const src_array = this.context.array;
-
 		if (length === undefined) {
 			const value = this.#get_single_value(<key>key, 'object') as V;
-			const offset = src_array.byteOffset + this.position;
-			this.position = struct.pack(value, src_array.buffer, offset, src_array.length - offset);
+			this.position = this.#exec_struct(struct, value, this.position, this.end);
 			return value;
 		}
 
 		const values = this.#get_array_value(<key>key, length) as V[];
 		for (let i=0; i<length; i++) {
-			const offset = src_array.byteOffset + this.position;
-			this.position = struct.pack(values[i], src_array.buffer, offset, src_array.length - offset);
+			this.position = this.#exec_struct(struct, values[i], this.position, this.end);
 		}
 		return values;
 	}
@@ -242,8 +252,37 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 		this.position += is_u16 ? 2 : 4;
 
 		return (func) => {
-			this.context.view[is_u16 ? 'setInt16' : 'setInt32'](origin, this.position - offset, little);
-			func(this);
+			const resolve = ((prior: number) => {
+				this.position = prior;
+				this.context.view[is_u16 ? 'setInt16' : 'setInt32'](origin, this.position - offset, little);
+
+				this.level += 1;
+				func(this);
+				this.level -= 1;
+
+				return this.position;
+			}) as Resolvable;
+
+			resolve.level = this.level;
+			this.context.pointers.push(resolve);
+		}
+	}
+
+	/** @internal Forcefully resolves all current pointers. DO NOT CALL THIS UNLESS YOU KNOW WHAT YOU ARE DOING! */
+	resolve() {
+		const pointers = this.context.pointers;
+
+		let level = 0, hits = 0;
+		let offset = this.position;
+		while (true) {
+			hits = 0;
+			for (let i=0; i<pointers.length; i++) {
+				if (pointers[i].level !== level) continue;
+				offset = pointers[i](offset);
+				hits ++;
+			}
+			if (hits === 0) break;
+			level ++;
 		}
 	}
 }

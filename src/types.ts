@@ -21,6 +21,11 @@ export type SKey<I, T> = KeysMatching<I, T> | Literal<T>;
 export type AKey<I, T> = KeysMatching<I, ArrayLike<T>> | Literal<ArrayLike<T>>;
 export type Key<I, T> = SKey<I, T> | AKey<I, T>;
 
+export interface Resolvable {
+	(offset: number): number;
+	level: number;
+}
+
 /** @internal */
 export interface TypeNameMap {
 	'string': string,
@@ -32,9 +37,10 @@ export interface TypeNameMap {
 
 /** @internal */
 export interface Context {
-	object:	Unpacked;
-	view:	DataView;
-	array:	Uint8Array;
+	object:		Unpacked;
+	view:		DataView;
+	array:		Uint8Array;
+	pointers:	Resolvable[]; // This should be shared across all structs beyond the root.
 }
 
 export declare interface Pointer<I extends Unpacked = Unpacked> {

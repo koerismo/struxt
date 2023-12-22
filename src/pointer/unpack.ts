@@ -1,5 +1,5 @@
 import type { SKey, AKey, Unpacked, Pointer, Key, key } from '../types.js';
-import type { Struct } from '../struct.js';
+import { create_context, type Struct } from '../struct.js';
 import { Literal } from '../types.js';
 import { SharedPointer } from './shared.js';
 import equal from 'fast-deep-equal';
@@ -227,6 +227,13 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		return value;
 	}
 
+	#exec_struct<T extends Unpacked>(struct: Struct<T>, object: Partial<Unpacked>, start: number, end: number) {
+		const ctx = create_context(this.context.array.buffer, object, this.context.pointers);
+		const ptr = new UnpackPointer<T>(ctx, start, start, end);
+		struct.exec(ptr);
+		return ptr.getpos(false);
+	}
+
 	struct<V extends Unpacked>(struct: Struct<V>, key: SKey<I, V>): V;
 	struct<V extends Unpacked>(struct: Struct<V>, key: AKey<I, V>, length: number): V[];
 	struct<V extends Unpacked>(struct: Struct<V>, key: Key<I, V>, length?: number): V | V[] {
@@ -234,7 +241,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 
 		if (length === undefined) {
 			const value: Partial<V> = struct.type();
-			this.position = struct.unpack(src_array.buffer, value, this.position, this.end - this.position);
+			this.position = this.#exec_struct(struct, value, this.position, this.end);
 			this.#set_value(key, value);
 			return value as V;
 		}
@@ -242,7 +249,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		const values: Partial<V>[] = new Array(length);
 		for (let i=0; i<length; i++) {
 			values[i] = struct.type();
-			this.position = struct.unpack(src_array.buffer, values[i], this.position, this.end - this.position);
+			this.position = this.#exec_struct(struct, values[i], this.position, this.end);
 		}
 
 		this.#set_value(key, values);

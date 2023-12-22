@@ -13,7 +13,7 @@ export class SharedPointer implements Partial<Pointer> {
 		this.context = context;
 		this.start = start;
 		this.end = end;
-		if (start > end || start < 0 || end > this.context.array.buffer.byteLength) throw `Pointer constructed with invalid range [${start} -> ${end}]`;
+		if (start > end || start < 0) throw `Pointer constructed with invalid range [${start} -> ${end}]`;
 		this.seek(position);
 	}
 
