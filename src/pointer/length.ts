@@ -1,6 +1,6 @@
 import type { SKey, AKey, Unpacked, Pointer, Context, Key, TypeNameMap, key } from '../types.js';
 import type { Struct } from '../struct.js';
-import { Literal } from '../types.js';
+import { Literal, CustomOptions } from '../types.js';
 import { SharedPointer } from './shared.js';
 
 /** @internal Use the generic Pointer<I> for types instead! */
@@ -13,23 +13,23 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	}
 
 	seek(position: number): void {
-		if (position < 0) throw(`Pointer.seek: Attempted to seek past start boundary!`);
+		if (position < 0) throw(`${this.context.name}: Pointer.seek: Attempted to seek past start boundary!`);
 		this.position = position;
 	}
 
 	#get_single_value<K extends keyof TypeNameMap>(key: key|Literal<any>, type: K): TypeNameMap[K] {
 		const literal = key instanceof Literal;
 		const v = literal ? key.value : this.object[key];
-		if (typeof v !== type) throw `Expected type ${type} for key ${key.toString()}, but got ${typeof v} instead!`;
-		if (v == null) throw `Expected type ${type} for key ${key.toString()}, but got null/undefined instead!`;
+		if (typeof v !== type) throw `${this.context.name}: Expected type ${type} for key ${key.toString()}, but got ${typeof v} instead!`;
+		if (v == null) throw `${this.context.name}: Expected type ${type} for key ${key.toString()}, but got null/undefined instead!`;
 		return v;
 	}
 
 	#get_array_value(key: key|Literal<any>, length: number): ArrayLike<any> {
 		const literal = key instanceof Literal;
 		const v = literal ? key.value : this.object[key];
-		if (v == null || typeof v !== 'object') throw `Expected array for key ${key.toString()}, but got ${typeof v} instead!`;
-		if (v.length !== length) throw `Expected array of length key ${length} for ${key.toString()}, but got ${v.length} instead!`;
+		if (v == null || typeof v !== 'object') throw `${this.context.name}: Expected array for key ${key.toString()}, but got ${typeof v} instead!`;
+		if (v.length !== length) throw `${this.context.name}: Expected array of length key ${length} for ${key.toString()}, but got ${v.length} instead!`;
 		return v;
 	}
 
@@ -216,5 +216,9 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		return (func) => {
 			func(this);
 		}
+	}
+
+	custom(opts: CustomOptions<I>) {
+		opts.length(this);
 	}
 }

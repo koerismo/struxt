@@ -2,6 +2,12 @@ import type { Struct } from './struct.js';
 
 type KeysMatching<I, T> = {[K in keyof I]: I[K] extends T ? K : never}[keyof I];
 
+export interface CustomOptions<I extends Unpacked> {
+	length(ptr: Pointer<I>): void;
+	pack(ptr: Pointer<I>): void;
+	unpack(ptr: Pointer<I>): void;
+}
+
 export class Literal<T> {
 	value: T;
 	constructor(value: T) {
@@ -35,8 +41,8 @@ export interface TypeNameMap {
 	'object':  object,
 }
 
-/** @internal */
 export interface Context {
+	name:		string;
 	object:		Unpacked;
 	view:		DataView;
 	array:		Uint8Array;
@@ -44,6 +50,7 @@ export interface Context {
 }
 
 export declare interface Pointer<I extends Unpacked = Unpacked> {
+	context: Context;
 
 	// Uint
 
@@ -125,4 +132,7 @@ export declare interface Pointer<I extends Unpacked = Unpacked> {
 	 * @param relative True by default. If set to false, the position will be reported relative to the start of the buffer instead of the struct.
 	*/
 	getpos(relative?: boolean): number;
+
+	/** Runs a custom function depending on the pack/unpack state. Only use this as a last resort, as it breaks the struxt design pattern! */
+	custom(opts: CustomOptions<I>): void;
 }

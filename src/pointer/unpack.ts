@@ -1,12 +1,12 @@
 import type { SKey, AKey, Unpacked, Pointer, Key, key } from '../types.js';
 import { create_context, type Struct } from '../struct.js';
-import { Literal } from '../types.js';
+import { Literal, CustomOptions } from '../types.js';
 import { SharedPointer } from './shared.js';
 import equal from 'fast-deep-equal';
 
 /** @internal Use the generic Pointer<I> for types instead! */
-function assert_equal<T extends Object>(actual: Object, expected: T): asserts actual is T {
-	if (!equal(actual, expected)) `Failed to match literal value!`;
+function assert_equal<T extends Object>(actual: Object, expected: T, name: string): asserts actual is T {
+	if (!equal(actual, expected)) `${name}: Failed to match literal value!`;
 	// if (typeof expected !== typeof actual) throw `Assert: value type ${typeof actual} does not match expected type ${typeof expected}!`;
 	// if (typeof expected !== 'object' && actual !== expected) throw `Assert: value "${actual}" does not match expected value "${expected}"!`;
 	// if (actual === null && expected !== null) throw `Assert: null value does not match expected value "${expected}"!`;
@@ -28,8 +28,11 @@ const TD = new TextDecoder();
 
 /** @internal */
 export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer implements Pointer<I> {
+	/** @internal */
+	name: string = '';
+	
 	#set_value(key: Key<I, any>, value: any) {
-		if (key instanceof Literal) assert_equal(value, key.value);
+		if (key instanceof Literal) assert_equal(value, key.value, this.context.name);
 		else this.context.object[<key>key] = value;
 	}
 
@@ -273,5 +276,9 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		return (func) => {
 			func(ref);
 		}
+	}
+
+	custom(opts: CustomOptions<I>) {
+		opts.unpack(this);
 	}
 }

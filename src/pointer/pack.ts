@@ -1,6 +1,6 @@
 import type { SKey, AKey, Unpacked, Pointer, Key, TypeNameMap, key, Resolvable, Context } from '../types.js';
 import { create_context, type Struct } from '../struct.js';
-import { Literal } from '../types.js';
+import { Literal, CustomOptions } from '../types.js';
 import { SharedPointer } from './shared.js';
 
 const TE = new TextEncoder();
@@ -17,15 +17,15 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 
 	#get_single_value<K extends keyof TypeNameMap>(key: key|Literal<any>, type: K): TypeNameMap[K] {
 		const v = key instanceof Literal ? key.value : this.context.object[key];
-		if (typeof v !== type) throw `Expected type ${type} for key ${key.toString()}, but got ${typeof v} instead!`;
-		if (v == null) throw `Expected type ${type} for key ${key.toString()}, but got null/undefined instead!`;
+		if (typeof v !== type) throw `${this.context.name}: Expected type ${type} for key ${key.toString()}, but got ${typeof v} instead!`;
+		if (v == null) throw `${this.context.name}: Expected type ${type} for key ${key.toString()}, but got null/undefined instead!`;
 		return v;
 	}
 
 	#get_array_value(key: key|Literal<any>, length: number): ArrayLike<any> {
 		const v = key instanceof Literal ? key.value : this.context.object[key];
-		if (v == null || typeof v !== 'object') throw `Expected array for key ${key.toString()}, but got ${typeof v} instead!`;
-		if (v.length !== length) throw `Expected array of length ${length} for key ${key.toString()}, but got ${v.length} instead!`;
+		if (v == null || typeof v !== 'object') throw `${this.context.name}: Expected array for key ${key.toString()}, but got ${typeof v} instead!`;
+		if (v.length !== length) throw `${this.context.name}: Expected array of length ${length} for key ${key.toString()}, but got ${v.length} instead!`;
 		return v;
 	}
 
@@ -209,7 +209,7 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 			this.position ++;
 		}
 		else if (value.length !== length) {
-			throw `Expected a string of length ${length} for key ${<key>key}, but got ${value.length} instead!`;
+			throw `${this.context.name}: Expected a string of length ${length} for key ${<key>key}, but got ${value.length} instead!`;
 		}
 
 		return value;
@@ -272,7 +272,7 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 	resolve() {
 		const pointers = this.context.pointers;
 
-		let level = 0, hits = 0;
+		let level = this.level, hits = 0;
 		let offset = this.position;
 		while (true) {
 			hits = 0;
@@ -284,5 +284,9 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 			if (hits === 0) break;
 			level ++;
 		}
+	}
+
+	custom(opts: CustomOptions<I>) {
+		opts.pack(this);
 	}
 }
