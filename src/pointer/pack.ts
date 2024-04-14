@@ -7,6 +7,8 @@ const TE = new TextEncoder();
 
 /** @internal Use the generic Pointer<I> for types instead! */
 export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer implements Pointer<I> {
+	declare context: Context<I>;
+
 	/** @internal */
 	level: number;
 
@@ -15,8 +17,9 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 		this.level = level;
 	}
 
-	#get_single_value<K extends keyof TypeNameMap>(key: key|Literal<any>, type: K): TypeNameMap[K] {
+	#get_single_value<K extends keyof TypeNameMap>(key: Key<I, any>, type: K): TypeNameMap[K] {
 		const v = key instanceof Literal ? key.value : this.context.object[key];
+
 		if (typeof v !== type) throw `${this.context.name}: Expected type ${type} for key ${key.toString()}, but got ${typeof v} instead!`;
 		if (v == null) throw `${this.context.name}: Expected type ${type} for key ${key.toString()}, but got null/undefined instead!`;
 		return v;
@@ -24,6 +27,7 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 
 	#get_array_value(key: key|Literal<any>, length: number): ArrayLike<any> {
 		const v = key instanceof Literal ? key.value : this.context.object[key];
+		
 		if (v == null || typeof v !== 'object') throw `${this.context.name}: Expected array for key ${key.toString()}, but got ${typeof v} instead!`;
 		if (v.length !== length) throw `${this.context.name}: Expected array of length ${length} for key ${key.toString()}, but got ${v.length} instead!`;
 		return v;
@@ -215,25 +219,27 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 		return value;
 	}
 
-	#exec_struct<T extends Unpacked>(struct: Struct<T>, object: Partial<Unpacked>, start: number, end: number) {
-		const ctx = create_context(this.context.array.buffer, object, this.context.pointers);
+	#exec_struct<T extends Unpacked, A extends unknown[]>(struct: Struct<T, A>, object: Partial<Unpacked>, start: number, end: number, args: A) {
+		const ctx = create_context(struct.name, this.context.array.buffer, object, this.context.pointers);
 		const ptr = new PackPointer<T>(ctx, start, start, end, this.level);
-		struct.exec(ptr);
+		struct.exec(ptr, ...args);
 		return ptr.getpos(false);
 	}
 
-	struct<V extends Unpacked>(struct: Struct<V>, key: SKey<I, V>): V;
-	struct<V extends Unpacked>(struct: Struct<V>, key: AKey<I, V>, length: number): V[];
-	struct<V extends Unpacked>(struct: Struct<V>, key: Key<I, V>, length?: number): V | V[] {
+	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: SKey<I, V>, args: A): V;
+	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: AKey<I, V>, length: number, args: A): V[];
+	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: Key<I, V>, length?: number|A, args?: A): V | V[] {
+		if (Array.isArray(length)) args = <A><unknown>length, length = undefined;
+
 		if (length === undefined) {
 			const value = this.#get_single_value(<key>key, 'object') as V;
-			this.position = this.#exec_struct(struct, value, this.position, this.end);
+			this.position = this.#exec_struct(struct, value, this.position, this.end, args ?? <A><unknown>[]);
 			return value;
 		}
 
 		const values = this.#get_array_value(<key>key, length) as V[];
 		for (let i=0; i<length; i++) {
-			this.position = this.#exec_struct(struct, values[i], this.position, this.end);
+			this.position = this.#exec_struct(struct, values[i], this.position, this.end, args ?? <A><unknown>[]);
 		}
 		return values;
 	}

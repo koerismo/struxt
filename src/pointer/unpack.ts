@@ -1,4 +1,4 @@
-import type { SKey, AKey, Unpacked, Pointer, Key, key } from '../types.js';
+import type { SKey, AKey, Unpacked, Pointer, Key, key, Context } from '../types.js';
 import { create_context, type Struct } from '../struct.js';
 import { Literal, CustomOptions } from '../types.js';
 import { SharedPointer } from './shared.js';
@@ -6,34 +6,18 @@ import equal from 'fast-deep-equal';
 
 /** @internal Use the generic Pointer<I> for types instead! */
 function assert_equal<T extends Object>(actual: Object, expected: T, name: string): asserts actual is T {
-	if (!equal(actual, expected)) `${name}: Failed to match literal value!`;
-	// if (typeof expected !== typeof actual) throw `Assert: value type ${typeof actual} does not match expected type ${typeof expected}!`;
-	// if (typeof expected !== 'object' && actual !== expected) throw `Assert: value "${actual}" does not match expected value "${expected}"!`;
-	// if (actual === null && expected !== null) throw `Assert: null value does not match expected value "${expected}"!`;
-	// if (typeof expected === 'object') {
-	// 	if (actual.constructor !== expected.constructor) throw `Assert: value constructor ${actual.constructor} does not match expected constructor ${expected.constructor}!`;
-	// 	if ('length' in expected !== 'length' in actual) throw `Assert: Length type does not match!`;
-	// 	if ('length' in expected && 'length' in actual && expected.length !== actual.length) throw `Assert: Expected length ${expected.length} but got length ${actual.length}`;
-	// 	if ('length' in expected) {
-	// 		// @ts-expect-error ignore it ignore it
-	// 		for (let i=0; i<expected.length; i++) {
-	// 			// @ts-expect-error want die
-	// 			if (expected[i] !== actual[i]) throw `Assert: value ${actual[i]} at ${i} does not match expected!`;
-	// 		}
-	// 	}
-	// }
+	if (!equal(actual, expected)) throw new Error(`${name}: Failed to match literal value!`);
 }
 
 const TD = new TextDecoder();
 
 /** @internal */
 export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer implements Pointer<I> {
-	/** @internal */
-	name: string = '';
+	declare context: Context<I>;
 	
 	#set_value(key: Key<I, any>, value: any) {
 		if (key instanceof Literal) assert_equal(value, key.value, this.context.name);
-		else this.context.object[<key>key] = value;
+		else this.context.object[<any>key] = value;
 	}
 
 	u8(key: SKey<I, number>): number;
@@ -41,7 +25,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	u8(key: Key<I, number>, length?: number | undefined): number | Uint8Array {
 		if (length === undefined) {
 			const value = this.context.view.getUint8(this.position);
-			this.context.object[<key>key] = value;
+			this.context.object[<any>key] = value;
 			this.position ++;
 			return value;
 		}
@@ -230,21 +214,21 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		return value;
 	}
 
-	#exec_struct<T extends Unpacked>(struct: Struct<T>, object: Partial<Unpacked>, start: number, end: number) {
-		const ctx = create_context(this.context.array.buffer, object, this.context.pointers);
+	#exec_struct<T extends Unpacked, A extends unknown[]>(struct: Struct<T, A>, object: Partial<Unpacked>, start: number, end: number, args: A) {
+		const ctx = create_context(struct.name, this.context.array.buffer, object, this.context.pointers);
 		const ptr = new UnpackPointer<T>(ctx, start, start, end);
-		struct.exec(ptr);
+		struct.exec(ptr, ...args);
 		return ptr.getpos(false);
 	}
 
-	struct<V extends Unpacked>(struct: Struct<V>, key: SKey<I, V>): V;
-	struct<V extends Unpacked>(struct: Struct<V>, key: AKey<I, V>, length: number): V[];
-	struct<V extends Unpacked>(struct: Struct<V>, key: Key<I, V>, length?: number): V | V[] {
-		const src_array = this.context.array;
+	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: SKey<I, V>, args: A): V;
+	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: AKey<I, V>, length: number, args: A): V[];
+	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: Key<I, V>, length?: number|A, args?: A): V | V[] {
+		if (Array.isArray(length)) args = <A><unknown>length, length = undefined;
 
 		if (length === undefined) {
 			const value: Partial<V> = struct.type();
-			this.position = this.#exec_struct(struct, value, this.position, this.end);
+			this.position = this.#exec_struct(struct, value, this.position, this.end, args ?? <A><unknown>[]);
 			this.#set_value(key, value);
 			return value as V;
 		}
@@ -252,7 +236,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		const values: Partial<V>[] = new Array(length);
 		for (let i=0; i<length; i++) {
 			values[i] = struct.type();
-			this.position = this.#exec_struct(struct, values[i], this.position, this.end);
+			this.position = this.#exec_struct(struct, values[i], this.position, this.end, args ?? <A><unknown>[]);
 		}
 
 		this.#set_value(key, values);
@@ -271,6 +255,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		let start = this.context.view[is_u16 ? 'getInt16' : 'getInt32'](this.position, this.little) + offset;
 
 		const ref = new UnpackPointer<I>(this.context, start, start, this.end);
+		ref.little = this.little;
 		this.position += is_u16 ? 2 : 4;
 
 		return (func) => {

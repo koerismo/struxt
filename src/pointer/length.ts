@@ -5,11 +5,10 @@ import { SharedPointer } from './shared.js';
 
 /** @internal Use the generic Pointer<I> for types instead! */
 export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer implements Pointer<I> {
-	protected object: Unpacked;
+	declare context: Context<I>;
 
-	constructor(object: Unpacked, start: number, position: number, end: number) {
-		super(<Context><unknown>null, start, position, end);
-		this.object = object;
+	constructor(context: { object: Object, name: string }, start: number, position: number, end: number) {
+		super(<Context>context, start, position, end);
 	}
 
 	seek(position: number): void {
@@ -17,17 +16,21 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		this.position = position;
 	}
 
-	#get_single_value<K extends keyof TypeNameMap>(key: key|Literal<any>, type: K): TypeNameMap[K] {
-		const literal = key instanceof Literal;
-		const v = literal ? key.value : this.object[key];
+	#get_single_value<K extends keyof TypeNameMap>(key: Key<I, any>, type: K): TypeNameMap[K] {
+		const v = key instanceof Literal ? key.value : this.context.object[key];
+
 		if (typeof v !== type) throw `${this.context.name}: Expected type ${type} for key ${key.toString()}, but got ${typeof v} instead!`;
 		if (v == null) throw `${this.context.name}: Expected type ${type} for key ${key.toString()}, but got null/undefined instead!`;
 		return v;
 	}
 
-	#get_array_value(key: key|Literal<any>, length: number): ArrayLike<any> {
-		const literal = key instanceof Literal;
-		const v = literal ? key.value : this.object[key];
+	#get_array_value(key: Key<I, any>, length: number): ArrayLike<any> {
+		const v = key instanceof Literal ? key.value : this.context.object[key];
+		// let v;
+		// if (key instanceof Literal)			v = key.value;
+		// else if (typeof key === 'function')	v = key(this.context.object);
+		// else								v = this.context.object[key];
+
 		if (v == null || typeof v !== 'object') throw `${this.context.name}: Expected array for key ${key.toString()}, but got ${typeof v} instead!`;
 		if (v.length !== length) throw `${this.context.name}: Expected array of length key ${length} for ${key.toString()}, but got ${v.length} instead!`;
 		return v;
@@ -188,18 +191,20 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		return value;
 	}
 
-	struct<V extends Unpacked>(struct: Struct<V>, key: SKey<I, V>): V;
-	struct<V extends Unpacked>(struct: Struct<V>, key: AKey<I, V>, length: number): V[];
-	struct<V extends Unpacked>(struct: Struct<V>, key: Key<I, V>, length?: number): V | V[]  {
+	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: SKey<I, V>, args: A): V;
+	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: AKey<I, V>, length: number, args: A): V[];
+	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: Key<I, V>, length?: number|A, args?: A): V | V[]  {
+		if (Array.isArray(length)) args = <A><unknown>length, length = undefined;
+		
 		if (length === undefined) {
-			const value = this.#get_single_value(<key>key, 'object') as V;
-			this.position += struct.length(value);
+			const value = this.#get_single_value(key, 'object') as V;
+			this.position += struct.length(value, ...args!);
 			return value;
 		}
 
-		const values = this.#get_array_value(<key>key, length) as V[];
+		const values = this.#get_array_value(key, length) as V[];
 		for (let i=0; i<length; i++) {
-			this.position += struct.length(values[i]);
+			this.position += struct.length(values[i], ...args!);
 		}
 		return values;
 	}

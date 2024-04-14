@@ -41,16 +41,16 @@ export interface TypeNameMap {
 	'object':  object,
 }
 
-export interface Context {
+export interface Context<I extends Unpacked = Unpacked> {
 	name:		string;
-	object:		Unpacked;
+	object:		I;
 	view:		DataView;
 	array:		Uint8Array;
 	pointers:	Resolvable[]; // This should be shared across all structs beyond the root.
 }
 
 export declare interface Pointer<I extends Unpacked = Unpacked> {
-	context: Context;
+	context: Context<I>;
 
 	// Uint
 
@@ -90,6 +90,11 @@ export declare interface Pointer<I extends Unpacked = Unpacked> {
 
 	// Float
 
+	// Wait for the ECMA proposal to go through...
+	// f16(key: SKey<I, number>): number;
+	// f16(key: AKey<I, number>, length: number): Float16Array;
+	// f16(key: Key<I, number>, length?: number): number| Float16Array;
+
 	f32(key: SKey<I, number>): number;
 	f32(key: AKey<I, number>, length: number): Float32Array;
 	f32(key: Key<I, number>,  length?: number): number | Float32Array;
@@ -103,9 +108,9 @@ export declare interface Pointer<I extends Unpacked = Unpacked> {
 	str(key: SKey<I, string>): string;
 	str(key: SKey<I, string>, length?: number): string;
 
-	struct<V extends Unpacked>(struct: Struct<V>, key: SKey<I, V>): V;
-	struct<V extends Unpacked>(struct: Struct<V>, key: AKey<I, V>, length: number): V[];
-	struct<V extends Unpacked>(struct: Struct<V>, key: Key<I, V>, length?: number): V | V[];
+	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: SKey<I, V>, args: A): V;
+	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: AKey<I, V>, length: number, args: A): V[];
+	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: Key<I, V>, length?: number|A, args?: A): V | V[];
 
 	/** Consumes N bytes, returning another pointer at the original position */
 	defer(length: number): Pointer<I>;

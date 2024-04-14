@@ -3,7 +3,7 @@ import { LengthPointer } from './pointer/length.js';
 import { PackPointer } from './pointer/pack.js';
 import { UnpackPointer } from './pointer/unpack.js';
 
-type ExecFunction<I extends Unpacked> = (ctx: Pointer<I>) => void;
+type ExecFunction<I extends Unpacked, A extends unknown[]> = (ctx: Pointer<I>, ...args: A) => void;
 
 /** @internal */
 export function create_context(name: string, buffer: ArrayBuffer, object: Unpacked, pointers: Resolvable[]): Context {
@@ -16,41 +16,41 @@ export function create_context(name: string, buffer: ArrayBuffer, object: Unpack
 	}
 }
 
-export class Struct<I extends Unpacked = Unpacked> {
+export class Struct<I extends Unpacked = Unpacked, A extends any[] = any[]> {
 	/** @internal Stores the exec function provided in the constructor. Do not call directly! */
-	exec: ExecFunction<I>;
+	exec: ExecFunction<I, A>;
 	/** @internal Stores the object constructor used when unpack pointers call Pointer.struct with this struct. */
 	type: () => object;
 	/** @internal Used for tracking errors. */
 	name: string;
 
-	constructor(exec: ExecFunction<I>, options?: { type?: (() => object), name?: string }) {
+	constructor(exec: ExecFunction<I, A>, options?: { type?: (() => object), name?: string }) {
 		this.exec = exec;
 		this.type = options?.type ?? Object;
 		this.name = options?.name ?? 'Struct';
 	}
 
 	/** Dry-runs a struct pack operation and returns the expected length. */
-	length(source: Unpacked): number {
-		const ptr = new LengthPointer<I>(source, 0, 0, Infinity);
-		this.exec(ptr);
+	length(source: Unpacked, ...args: A): number {
+		const ptr = new LengthPointer<I>({ name: this.name, object: source }, 0, 0, Infinity);
+		this.exec(ptr, ...args);
 		return ptr.getpos(false);
 	}
 
 	/** Packs the struct into the specified buffer, returning the new absolute pointer position. */
-	pack(source: I, target: ArrayBuffer, offset: number=0, length: number=target.byteLength-offset): number {
+	pack(source: I, target: ArrayBuffer, offset: number=0, length: number=target.byteLength-offset, ...args: A): number {
 		const ctx = create_context(this.name, target, source, []);
 		const ptr = new PackPointer<I>(ctx, offset, offset, offset+length);
-		this.exec(ptr);
+		this.exec(ptr, ...args);
 		ptr.resolve();
 		return ptr.getpos(false);
 	}
 
 	/** Unpacks the struct from the specified buffer, returning the new absolute pointer position. */
-	unpack(source: ArrayBuffer, target: Partial<I>, offset: number=0, length: number=source.byteLength-offset): number {
+	unpack(source: ArrayBuffer, target: Partial<I>, offset: number=0, length: number=source.byteLength-offset, ...args: A): number {
 		const ctx = create_context(this.name, source, target, []);
 		const ptr = new UnpackPointer<I>(ctx, offset, offset, offset+length);
-		this.exec(ptr);
+		this.exec(ptr, ...args);
 		return ptr.getpos(false);
 	}
 }
