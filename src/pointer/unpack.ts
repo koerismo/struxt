@@ -6,7 +6,7 @@ import equal from 'fast-deep-equal';
 
 /** @internal Use the generic Pointer<I> for types instead! */
 function assert_equal<T extends Object>(actual: Object, expected: T, name: string): asserts actual is T {
-	if (!equal(actual, expected)) throw new Error(`${name}: Failed to match literal value!`);
+	if (!equal(actual, expected)) throw new Error(`${name}: Failed to match literal value! (Expected ${expected}, but got ${actual})`);
 }
 
 const TD = new TextDecoder();
@@ -25,7 +25,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	u8(key: Key<I, number>, length?: number | undefined): number | Uint8Array {
 		if (length === undefined) {
 			const value = this.context.view.getUint8(this.position);
-			this.context.object[<any>key] = value;
+			this.#set_value(key, value);
 			this.position ++;
 			return value;
 		}

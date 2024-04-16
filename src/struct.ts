@@ -21,8 +21,8 @@ export class Struct<I extends Unpacked = Unpacked, A extends any[] = any[]> {
 	exec: ExecFunction<I, A>;
 	/** @internal Stores the object constructor used when unpack pointers call Pointer.struct with this struct. */
 	type: () => object;
-	/** @internal Used for tracking errors. */
-	name: string;
+	/** The struct name, used for tracking errors. */
+	readonly name: string;
 
 	constructor(exec: ExecFunction<I, A>, options?: { type?: (() => object), name?: string }) {
 		this.exec = exec;
@@ -38,7 +38,18 @@ export class Struct<I extends Unpacked = Unpacked, A extends any[] = any[]> {
 	}
 
 	/** Packs the struct into the specified buffer, returning the new absolute pointer position. */
-	pack(source: I, target: ArrayBuffer, offset: number=0, length: number=target.byteLength-offset, ...args: A): number {
+	pack(source: I, target: ArrayBuffer): number;
+	pack(source: I, target: ArrayBuffer, args: A): number;
+	pack(source: I, target: ArrayBuffer, offset: number, args: A): number;
+	pack(source: I, target: ArrayBuffer, offset: number, length: number, args: A): number;
+	pack(source: I, target: ArrayBuffer, offset?: number|A, length?: number|A, args?: A): number {
+		if (Array.isArray(length)) args = <A><unknown>length, length = undefined;
+		if (Array.isArray(offset)) args = <A><unknown>offset, offset = undefined, length = undefined;
+		
+		args ??= <A><unknown>[];
+		offset ??= 0;
+		length ??= target.byteLength - offset;
+		
 		const ctx = create_context(this.name, target, source, []);
 		const ptr = new PackPointer<I>(ctx, offset, offset, offset+length);
 		this.exec(ptr, ...args);
@@ -47,7 +58,18 @@ export class Struct<I extends Unpacked = Unpacked, A extends any[] = any[]> {
 	}
 
 	/** Unpacks the struct from the specified buffer, returning the new absolute pointer position. */
-	unpack(source: ArrayBuffer, target: Partial<I>, offset: number=0, length: number=source.byteLength-offset, ...args: A): number {
+	unpack(source: ArrayBuffer, target: Partial<I>): number;
+	unpack(source: ArrayBuffer, target: Partial<I>, args: A): number;
+	unpack(source: ArrayBuffer, target: Partial<I>, offset: number, args: A): number;
+	unpack(source: ArrayBuffer, target: Partial<I>, offset: number, length: number, args: A): number;
+	unpack(source: ArrayBuffer, target: Partial<I>, offset?: number|A, length?: number|A, args?: A): number {
+		if (Array.isArray(length)) args = <A><unknown>length, length = undefined;
+		if (Array.isArray(offset)) args = <A><unknown>offset, offset = undefined, length = undefined;
+		
+		args ??= <A><unknown>[];
+		offset ??= 0;
+		length ??= source.byteLength - offset;
+		
 		const ctx = create_context(this.name, source, target, []);
 		const ptr = new UnpackPointer<I>(ctx, offset, offset, offset+length);
 		this.exec(ptr, ...args);
