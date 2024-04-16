@@ -1,4 +1,4 @@
-import { Struct, Literal } from '../dist/index.js';
+import { Struct, Literal } from '../src/index.ts';
 import assert from 'assert';
 
 const input = {
@@ -37,7 +37,7 @@ describe('Mode array tests', () => {
 	});
 
 	it('Length mode', () => {
-		let length;
+		let length!: number;
 		assert.doesNotThrow(() => {length = struct.length(input, 'LE')});
 		assert.strictEqual(length, 210);
 		assert.doesNotThrow(() => {length = struct.length(input, 'BE')});

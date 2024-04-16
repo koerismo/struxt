@@ -1,4 +1,4 @@
-import { Struct, Literal } from '../dist/index.js';
+import { Struct, Literal } from '../src/index.ts';
 import assert from 'assert';
 
 const input = {
