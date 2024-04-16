@@ -3,13 +3,11 @@
 	"author": "koerismo",
 	"description": "Dynamic data structures for Javascript.",
 	"version": "3.5.0",
-	"private": "true",
 	"keywords": [
+		"buffer",
 		"struct",
 		"binary",
-		"data",
-		"parsing",
-		"lightweight"
+		"parsing"
 	],
 	"type": "module",
 	"license": "MPL-2.0",
@@ -23,22 +21,13 @@
 		"dist/*"
 	],
 	"scripts": {
-		"build": "tspc",
-		"test": "c8 mocha",
-		"format": "prettier --write dist/",
+		"build": "tsc",
+		"test": "bun test",
 		"publish": "npm run test && npm publish"
 	},
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/koerismo/struxt.git"
-	},
-	"devDependencies": {
-		"c8": "^8.0.0",
-		"mocha": "^10.2.0",
-		"prettier": "2.8.8",
-		"ts-macros": "^2.3.0",
-		"ts-patch": "^3.0.1",
-		"typescript": "^5.1.6"
 	},
 	"dependencies": {
 		"fast-deep-equal": "^3.1.3"

@@ -12,10 +12,6 @@
 		"declaration": true,
 		"alwaysStrict": true,
 		"strict": true,
-
-		"plugins": [
-			{ "transform": "ts-macros" }
-		]
 	},
 	"include": [ "src/**/*" ]
 }

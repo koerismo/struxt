@@ -25,7 +25,7 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 		return v;
 	}
 
-	#get_array_value(key: key|Literal<any>, length: number): ArrayLike<any> {
+	#get_array_value(key: Key<I, any>, length: number): ArrayLike<any> {
 		const v = key instanceof Literal ? key.value : this.context.object[key];
 		
 		if (v == null || typeof v !== 'object') throw `${this.context.name}: Expected array for key ${key.toString()}, but got ${typeof v} instead!`;
