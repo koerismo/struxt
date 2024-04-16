@@ -225,6 +225,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: AKey<I, V>, length: number, args: A): V[];
 	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: Key<I, V>, length?: number|A, args?: A): V | V[] {
 		if (Array.isArray(length)) args = <A><unknown>length, length = undefined;
+		args ??= <A><unknown>[];
 
 		if (length === undefined) {
 			const value: Partial<V> = struct.type();
@@ -254,7 +255,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		if (relative) offset += this.start;
 		let start = this.context.view[is_u16 ? 'getInt16' : 'getInt32'](this.position, this.little) + offset;
 
-		const ref = new UnpackPointer<I>(this.context, start, start, this.end);
+		const ref = new UnpackPointer<I>(this.context, this.start, start, this.end);
 		ref.little = this.little;
 		this.position += is_u16 ? 2 : 4;
 

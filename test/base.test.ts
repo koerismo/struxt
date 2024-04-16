@@ -20,6 +20,8 @@ const input = {
 };
 
 const packed_LE = new Uint8Array([
+	0x00, 0x00, 0x00, 0x00,
+
 	// Numbers
 	0x7B, 0xD2, 0x04, 0x39, 0x30, 0x00, 0x00, 0x40, 0xE2, 0x01, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x7B, 0xD2, 0x04, 0x39, 0x30, 0x00, 0x00, 0x40, 0xE2,
@@ -37,6 +39,8 @@ const packed_LE = new Uint8Array([
 ]);
 
 const packed_BE = new Uint8Array([
+	0x00, 0x00, 0x00, 0x00,
+
 	// Numbers
 	0x7B, 0x04, 0xD2, 0x00, 0x00, 0x30, 0x39, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x01, 0xE2, 0x40, 0x7B, 0x04, 0xD2, 0x00, 0x00, 0x30, 0x39, 0x00, 0x00,
@@ -56,6 +60,10 @@ const packed_BE = new Uint8Array([
 describe('Mode base tests', () => {
 	const struct = new Struct((ctx, order) => {
 		ctx.order(order);
+
+		// Moves to 0x04
+		ctx.pad(3);
+		ctx.align(4);
 
 		ctx.u8('u8');
 		ctx.u16('u16');
@@ -90,15 +98,15 @@ describe('Mode base tests', () => {
 	});
 
 	it('Length mode', () => {
-		let length;
+		let length!: number;
 		assert.doesNotThrow(() => {length = struct.length(input, 'LE')});
-		assert.strictEqual(length, 112);
+		assert.strictEqual(length, 116);
 		assert.doesNotThrow(() => {length = struct.length(input, 'BE')});
-		assert.strictEqual(length, 112);
+		assert.strictEqual(length, 116);
 	});
 
 	it('Pack mode', () => {
-		const packed = new Uint8Array(112);
+		const packed = new Uint8Array(116);
 		assert.doesNotThrow(() => struct.pack(input, packed.buffer, ['LE']));
 		assert.deepStrictEqual(packed, packed_LE);
 		assert.doesNotThrow(() => struct.pack(input, packed.buffer, ['BE']));
