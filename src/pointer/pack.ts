@@ -20,16 +20,16 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 	#get_single_value<K extends keyof TypeNameMap>(key: Key<I, any>, type: K): TypeNameMap[K] {
 		const v = key instanceof Literal ? key.value : this.context.object[key];
 
-		if (typeof v !== type) throw `${this.context.name}: Expected type ${type} for key ${key.toString()}, but got ${typeof v} instead!`;
-		if (v == null) throw `${this.context.name}: Expected type ${type} for key ${key.toString()}, but got null/undefined instead!`;
+		if (typeof v !== type) throw TypeError(`${this.context.name}: Expected type ${type} for key ${key.toString()}, but got ${typeof v} instead!`);
+		if (v == null) throw TypeError(`${this.context.name}: Expected type ${type} for key ${key.toString()}, but got null/undefined instead!`);
 		return v;
 	}
 
 	#get_array_value(key: Key<I, any>, length: number): ArrayLike<any> {
 		const v = key instanceof Literal ? key.value : this.context.object[key];
 		
-		if (v == null || typeof v !== 'object') throw `${this.context.name}: Expected array for key ${key.toString()}, but got ${typeof v} instead!`;
-		if (v.length !== length) throw `${this.context.name}: Expected array of length ${length} for key ${key.toString()}, but got ${v.length} instead!`;
+		if (v == null || typeof v !== 'object') throw TypeError(`${this.context.name}: Expected array for key ${key.toString()}, but got ${typeof v} instead!`);
+		if (v.length !== length) throw TypeError(`${this.context.name}: Expected array of length ${length} for key ${key.toString()}, but got ${v.length} instead!`);
 		return v;
 	}
 
@@ -213,7 +213,7 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 			this.position ++;
 		}
 		else if (value.length !== length) {
-			throw `${this.context.name}: Expected a string of length ${length} for key ${<key>key}, but got ${value.length} instead!`;
+			throw TypeError(`${this.context.name}: Expected a string of length ${length} for key ${<key>key}, but got ${value.length} instead!`);
 		}
 
 		return value;
@@ -230,6 +230,7 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: AKey<I, V>, length: number, args: A): V[];
 	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: Key<I, V>, length?: number|A, args?: A): V | V[] {
 		if (Array.isArray(length)) args = <A><unknown>length, length = undefined;
+		args ??= <A><unknown>[];
 
 		if (length === undefined) {
 			const value = this.#get_single_value(key, 'object') as V;

@@ -13,7 +13,7 @@ export class SharedPointer implements Partial<Pointer> {
 		this.context = context;
 		this.start = start;
 		this.end = end;
-		if (start > end || start < 0) throw `${this.context.name}: Pointer constructed with invalid range [${start} -> ${end}]`;
+		if (start > end || start < 0) throw RangeError(`${this.context.name}: Pointer constructed with invalid range [${start} -> ${end}]`);
 		this.seek(position);
 	}
 
@@ -31,8 +31,8 @@ export class SharedPointer implements Partial<Pointer> {
 	}
 
 	seek(position: number): void {
-		if (position < this.start) throw(`${this.context.name}: Pointer.seek: Attempted to seek past start boundary!`);
-		if (position > this.end) throw(`${this.context.name}: Pointer.seek: Attempted to seek past end boundary!`);
+		if (position < this.start) throw RangeError(`${this.context.name}: Pointer.seek: Attempted to seek past start boundary!`);
+		if (position > this.end) throw RangeError(`${this.context.name}: Pointer.seek: Attempted to seek past end boundary!`);
 		this.position = position;
 	}
 

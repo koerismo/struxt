@@ -5,8 +5,8 @@ import { SharedPointer } from './shared.js';
 import equal from 'fast-deep-equal';
 
 /** @internal Use the generic Pointer<I> for types instead! */
-function assert_equal<T extends Object>(actual: Object, expected: T, name: string): asserts actual is T {
-	if (!equal(actual, expected)) throw new Error(`${name}: Failed to match literal value! (Expected ${expected}, but got ${actual})`);
+function assert_equal<T extends Object>(actual: Object, expected: Literal<T>, name: string): asserts actual is T {
+	if (expected.assert && !equal(actual, expected.value)) throw TypeError(`${name}: Failed to match literal value! (Expected ${expected}, but got ${actual})`);
 }
 
 const TD = new TextDecoder();
@@ -16,7 +16,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	declare context: Context<I>;
 	
 	#set_value(key: Key<I, any>, value: any) {
-		if (key instanceof Literal) assert_equal(value, key.value, this.context.name);
+		if (key instanceof Literal) assert_equal(value, key, this.context.name);
 		else this.context.object[<any>key] = value;
 	}
 

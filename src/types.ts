@@ -10,8 +10,10 @@ export interface CustomOptions<I extends Unpacked> {
 
 export class Literal<T> {
 	value: T;
-	constructor(value: T) {
+	assert: boolean;
+	constructor(value: T, assert: boolean) {
 		this.value = value;
+		this.assert = assert;
 	}
 	toString() {
 		if (this.value === null) return `Literal<null>`;

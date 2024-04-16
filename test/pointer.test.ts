@@ -80,6 +80,6 @@ describe('Defers & pointers', () => {
 		assert.deepStrictEqual(packed, source_packed);
 		base.unpack(packed.buffer, {});
 		// console.log(Array.from(packed).map(x => '0x'+x.toString(16)).join(', '));
+	});
 
-	})
 });
