@@ -1,7 +1,10 @@
+/*
+!/dist/*
+/dist/pointer/*.d.ts
+
 /src/
 /test/
 /node_modules/
 /tsconfig.json
-/coverage/
 
 **/.DS_STORE

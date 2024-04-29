@@ -62,7 +62,7 @@ describe('Defers & pointers', () => {
 			0x0E, 0x00, 0x17, 0x73, 0x75, 0x62, 0x00, 0x09, 0x00, 0x19, 0x41, 0x42,
 			0x41, 0x42
 		]);
-		
+
 		const sub = new Struct(ctx => {
 			ctx.str(Literal('sub'), 3);
 			ctx.pointer('i16', true)(ptr1 => ptr1.str(Literal('A'), 1));

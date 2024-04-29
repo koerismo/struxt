@@ -17,9 +17,6 @@
 	"homepage": "https://github.com/koerismo/struxt",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
-	"files": [
-		"dist/*"
-	],
 	"scripts": {
 		"build": "tsc",
 		"test": "bun test",

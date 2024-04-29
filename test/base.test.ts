@@ -6,7 +6,7 @@ const input = {
 	u16: 1234,
 	u32: 12345,
 	u64: 123456n,
-	
+
 	i8: 123,
 	i16: 1234,
 	i32: 12345,
@@ -87,7 +87,7 @@ describe('Mode base tests', () => {
 		ctx.i16(Literal(1234))
 		ctx.i32(Literal(12345));
 		ctx.i64(Literal(123456n));
-		
+
 		ctx.f32(Literal(Math.fround(123.456)));
 		ctx.f64(Literal(123.456));
 
@@ -112,7 +112,7 @@ describe('Mode base tests', () => {
 		assert.doesNotThrow(() => struct.pack(input, packed.buffer, ['BE']));
 		assert.deepStrictEqual(packed, packed_BE);
 	});
-	
+
 	it('Unpack mode', () => {
 		let unpacked = {};
 		assert.doesNotThrow(() => struct.unpack(packed_LE.buffer, unpacked, ['LE']));

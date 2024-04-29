@@ -6,7 +6,7 @@ const input = {
 	items_u16: new Uint16Array([10, 20, 30, 40, 50]),
 	items_u32: new Uint32Array([10, 20, 30, 40, 50]),
 	items_u64: new BigUint64Array([10n, 20n, 30n, 40n, 50n]),
-	
+
 	items_i8:  new Int8Array([10, 20, 30, 40, 50]),
 	items_i16: new Int16Array([10, 20, 30, 40, 50]),
 	items_i32: new Int32Array([10, 20, 30, 40, 50]),
@@ -51,7 +51,7 @@ describe('Mode array tests', () => {
 		assert.doesNotThrow(() => struct.pack(input, packed.buffer, ['BE']));
 		assert.deepStrictEqual(packed, packed_BE);
 	});
-	
+
 	it('Unpack mode', () => {
 		let unpacked = {};
 		assert.doesNotThrow(() => struct.unpack(packed_LE.buffer, unpacked, ['LE']));

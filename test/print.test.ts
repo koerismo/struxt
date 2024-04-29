@@ -13,7 +13,7 @@ describe('Debug printing', () => {
 		assert.throws(() => {
 			new Struct(ptr => ptr.u32('bad')).pack({}, new Uint8Array(4).buffer);
 		}, { message: 'Struct: Expected type number for key bad, but got undefined instead!' });
-		
+
 		assert.throws(() => {
 			new Struct(ptr => ptr.u32('bad'), { name: 'Test' }).pack({}, new Uint8Array(4).buffer);
 		}, { message: 'Test: Expected type number for key bad, but got undefined instead!' });
