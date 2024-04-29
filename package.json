@@ -2,7 +2,7 @@
 	"name": "struxt",
 	"author": "koerismo",
 	"description": "Dynamic data structures for Javascript.",
-	"version": "3.5.0",
+	"version": "3.5.3",
 	"keywords": [
 		"buffer",
 		"struct",
