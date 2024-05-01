@@ -110,8 +110,8 @@ export declare interface Pointer<I extends Unpacked = Unpacked> {
 	str(key: SKey<I, string>): string;
 	str(key: SKey<I, string>, length?: number): string;
 
-	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: SKey<I, V>, args: A): V;
-	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: AKey<I, V>, length: number, args: A): V[];
+	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: SKey<I, V>, args?: A): V;
+	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: AKey<I, V>, length: number, args?: A): V[];
 	struct<V extends Unpacked, A extends any[]>(struct: Struct<V, A>, key: Key<I, V>, length?: number|A, args?: A): V | V[];
 
 	/** Consumes N bytes, returning another pointer at the original position */
