@@ -3,7 +3,7 @@ import { LengthPointer } from './pointer/length.js';
 import { PackPointer } from './pointer/pack.js';
 import { UnpackPointer } from './pointer/unpack.js';
 
-type ExecFunction<I extends Unpacked, A extends unknown[]> = (ctx: Pointer<I>, ...args: A) => void;
+type ExecFunction<I extends Unpacked, A extends unknown[]> = (this: Struct<I, A>, ctx: Pointer<I>, ...args: A) => void;
 
 /** @internal */
 export function create_context(name: string, buffer: ArrayBuffer, object: Unpacked, pointers: Resolvable[]): Context {
@@ -18,15 +18,15 @@ export function create_context(name: string, buffer: ArrayBuffer, object: Unpack
 
 export class Struct<I extends Unpacked = Unpacked, A extends any[] = any[]> {
 	/** @internal Stores the exec function provided in the constructor. Do not call directly! */
-	exec: ExecFunction<I, A>;
+	__exec__: ExecFunction<I, A>;
 	/** @internal Stores the object constructor used when unpack pointers call Pointer.struct with this struct. */
-	type: () => object;
+	__type__: () => object;
 	/** The struct name, used for tracking errors. */
 	readonly name: string;
 
 	constructor(exec: ExecFunction<I, A>, options?: { type?: (() => object), name?: string }) {
-		this.exec = exec;
-		this.type = options?.type ?? Object;
+		this.__exec__ = exec;
+		this.__type__ = options?.type ?? Object;
 		this.name = options?.name ?? 'Struct';
 	}
 
@@ -40,7 +40,7 @@ export class Struct<I extends Unpacked = Unpacked, A extends any[] = any[]> {
 		offset ??= 0;
 		
 		const ptr = new LengthPointer<I>({ name: this.name, object: source }, offset, offset, Infinity);
-		this.exec(ptr, ...args);
+		this.__exec__(ptr, ...args);
 		return ptr.getpos(false);
 	}
 
@@ -48,19 +48,21 @@ export class Struct<I extends Unpacked = Unpacked, A extends any[] = any[]> {
 	pack(source: I, target: ArrayBuffer): number;
 	pack(source: I, target: ArrayBuffer, args: A): number;
 	pack(source: I, target: ArrayBuffer, offset: number, args: A): number;
+	pack(source: I, target: ArrayBuffer, offset: number, args: A): number;
 	pack(source: I, target: ArrayBuffer, offset: number, length: number, args: A): number;
-	pack(source: I, target: ArrayBuffer, offset?: number|A, length?: number|A, args?: A): number {
+	pack(source: I, target: ArrayBuffer, offset?: number|A, length?: number|A, args?: A, enable_sort?: boolean): number {
 		if (Array.isArray(length)) args = <A><unknown>length, length = undefined;
 		if (Array.isArray(offset)) args = <A><unknown>offset, offset = undefined, length = undefined;
 		
 		args ??= <A><unknown>[];
 		offset ??= 0;
 		length ??= target.byteLength - offset;
+		enable_sort ??= false;
 		
 		const ctx = create_context(this.name, target, source, []);
 		const ptr = new PackPointer<I>(ctx, offset, offset, offset+length);
-		this.exec(ptr, ...args);
-		ptr.resolve();
+		this.__exec__(ptr, ...args);
+		ptr.__resolve__(enable_sort);
 		return ptr.getpos(false);
 	}
 
@@ -79,7 +81,7 @@ export class Struct<I extends Unpacked = Unpacked, A extends any[] = any[]> {
 		
 		const ctx = create_context(this.name, source, target, []);
 		const ptr = new UnpackPointer<I>(ctx, offset, offset, offset+length);
-		this.exec(ptr, ...args);
+		this.__exec__(ptr, ...args);
 		return ptr.getpos(false);
 	}
 }

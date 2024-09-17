@@ -217,7 +217,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	#exec_struct<T extends Unpacked, A extends unknown[]>(struct: Struct<T, A>, object: Partial<Unpacked>, start: number, end: number, args: A) {
 		const ctx = create_context(struct.name, this.context.array.buffer, object, this.context.pointers);
 		const ptr = new UnpackPointer<T>(ctx, start, start, end);
-		struct.exec(ptr, ...args);
+		struct.__exec__(ptr, ...args);
 		return ptr.getpos(false);
 	}
 
@@ -228,7 +228,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		args ??= <A><unknown>[];
 
 		if (length === undefined) {
-			const value: Partial<V> = struct.type();
+			const value: Partial<V> = struct.__type__();
 			this.position = this.#exec_struct(struct, value, this.position, this.end, args ?? <A><unknown>[]);
 			this.#set_value(key, value);
 			return value as V;
@@ -236,7 +236,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 
 		const values: Partial<V>[] = new Array(length);
 		for (let i=0; i<length; i++) {
-			values[i] = struct.type();
+			values[i] = struct.__type__();
 			this.position = this.#exec_struct(struct, values[i], this.position, this.end, args ?? <A><unknown>[]);
 		}
 
@@ -250,7 +250,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		return ref;
 	}
 
-	pointer(type: 'i16' | 'i32', relative: boolean=true, offset: number=0): (func: (ctx: Pointer<I>) => void) => void {
+	pointer(type: 'i16' | 'i32', relative: boolean=true, offset: number=0, _priority?: number): (func: (ctx: Pointer<I>) => void) => void {
 		const is_u16 = type === 'i16';
 		if (relative) offset += this.start;
 		let start = this.context.view[is_u16 ? 'getInt16' : 'getInt32'](this.position, this.little) + offset;

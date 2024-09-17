@@ -222,7 +222,7 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 	#exec_struct<T extends Unpacked, A extends unknown[]>(struct: Struct<T, A>, object: Partial<Unpacked>, start: number, end: number, args: A) {
 		const ctx = create_context(struct.name, this.context.array.buffer, object, this.context.pointers);
 		const ptr = new PackPointer<T>(ctx, start, start, end, this.level);
-		struct.exec(ptr, ...args);
+		struct.__exec__(ptr, ...args);
 		return ptr.getpos(false);
 	}
 
@@ -251,7 +251,7 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 		return ref;
 	}
 
-	pointer(type: 'i16' | 'i32', relative: boolean=true, offset: number=0): (func: (ctx: Pointer<I>) => void) => void {
+	pointer(type: 'i16' | 'i32', relative: boolean=true, offset: number=0, priority: number=0): (func: (ctx: Pointer<I>) => void) => void {
 		const is_u16 = type === 'i16';
 		if (relative) offset += this.start;
 		const origin = this.position;
@@ -271,17 +271,21 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 			}) as Resolvable;
 
 			resolve.level = this.level;
+			resolve.priority = priority;
 			this.context.pointers.push(resolve);
 		}
 	}
 
 	/** @internal Forcefully resolves all current pointers. DO NOT CALL THIS UNLESS YOU KNOW WHAT YOU ARE DOING! */
-	resolve() {
+	__resolve__(enable_sort: boolean) {
 		const pointers = this.context.pointers;
 
 		let level = this.level, hits = 0;
 		let offset = this.position;
 		while (true) {
+			// TODO: Find a way to reduce the number of sorts or do this in a less expensive way?
+			if (enable_sort) pointers.sort((a, b) => b.priority - a.priority);
+
 			hits = 0;
 			for (let i=0; i<pointers.length; i++) {
 				if (pointers[i].level !== level) continue;

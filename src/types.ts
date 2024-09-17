@@ -32,6 +32,7 @@ export type Key<I, T> = SKey<I, T> | AKey<I, T>;
 export interface Resolvable {
 	(offset: number): number;
 	level: number;
+	priority: number;
 }
 
 /** @internal */
@@ -121,8 +122,10 @@ export declare interface Pointer<I extends Unpacked = Unpacked> {
 	 * @param type The datatype for the pointer.
 	 * @param relative Whether the pointer is relative to the struct's starting point. Defaults to true.
 	 * @param offset The offset of the pointer. Ex. (2 = move an additional two bytes)
+	 * @param priority The priority of the pointer to use when packing.
+	 * The allocator sorts lesser priority further down the buffer. The enable_sort argument must be supplied to Struct.pack() for this to take effect!
 	 */
-	pointer(type: 'i16'|'i32', relative?: boolean, offset?: number): (func: (ctx: Pointer<I>) => void) => void;
+	pointer(type: 'i16'|'i32', relative?: boolean, offset?: number, priority?: number): (func: (ctx: Pointer<I>) => void) => void;
 
 	// Shared
 

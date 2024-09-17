@@ -1,4 +1,4 @@
-import { Struct, Literal } from '../src/index.ts';
+import { Struct, Literal, Priority } from '../src/index.ts';
 import assert from 'assert';
 
 describe('Defers & pointers', () => {
@@ -82,4 +82,41 @@ describe('Defers & pointers', () => {
 		// console.log(Array.from(packed).map(x => '0x'+x.toString(16)).join(', '));
 	});
 
+	it('Packs according to the defined priority', () => {
+		const struct = new Struct(ctx => {
+			ctx.pointer('i16', true, 0)(b => {
+				assert(b.getpos() === 16);
+				b.pad(2);
+			});
+			
+			ctx.pointer('i16', true, 0, Priority.LOW)(b => {
+				assert(b.getpos() === 20);
+				b.pad(2);
+			});
+
+			ctx.pointer('i16', true, 0, Priority.HIGH)(b => {
+				assert(b.getpos() === 12);
+				b.pad(2);
+			});
+
+			ctx.pointer('i16', true, 0)(b => {
+				assert(b.getpos() === 18);
+				b.pad(2);
+			});
+
+
+			ctx.pointer('i16', true, 0, Priority.LOW)(b => {
+				assert(b.getpos() === 22);
+				b.pad(2);
+			});
+
+			ctx.pointer('i16', true, 0, Priority.HIGH)(b => {
+				assert(b.getpos() === 14);
+				b.pad(2);
+			});
+		});
+
+		const outbuf = new ArrayBuffer(2*2*3);
+		struct.pack({}, outbuf);
+	});
 });
