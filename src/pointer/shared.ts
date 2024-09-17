@@ -10,6 +10,9 @@ export class SharedPointer implements Partial<Pointer> {
 	protected end: number;
 
 	constructor(context: Context, start :number, position: number, end: number) {
+		if (typeof start !== 'number') throw TypeError('Expected offset to be number!');
+		if (typeof position !== 'number') throw TypeError('Expected position to be number!');
+		if (typeof end !== 'number') throw TypeError('Expected end to be number!');
 		this.context = context;
 		this.start = start;
 		this.end = end;

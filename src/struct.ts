@@ -30,9 +30,16 @@ export class Struct<I extends Unpacked = Unpacked, A extends any[] = any[]> {
 		this.name = options?.name ?? 'Struct';
 	}
 
-	/** Dry-runs a struct pack operation and returns the expected length. */
-	length(source: Unpacked, ...args: A): number {
-		const ptr = new LengthPointer<I>({ name: this.name, object: source }, 0, 0, Infinity);
+	/** Dry-runs a struct pack operation and returns the new pointer position. */
+	length(source: I): number;
+	length(source: I, args: A): number;
+	length(source: I, offset: number, args: A): number;
+	length(source: I, offset?: number|A, args?: A): number {
+		if (Array.isArray(offset)) args = <A><unknown>offset, offset = 0;
+		args ??= <A><unknown>[];
+		offset ??= 0;
+		
+		const ptr = new LengthPointer<I>({ name: this.name, object: source }, offset, offset, Infinity);
 		this.exec(ptr, ...args);
 		return ptr.getpos(false);
 	}

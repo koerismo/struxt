@@ -294,6 +294,6 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 	}
 
 	custom(opts: CustomOptions<I>) {
-		opts.pack(this);
+		return opts.pack(this);
 	}
 }

@@ -199,13 +199,13 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		
 		if (length === undefined) {
 			const value = this.#get_single_value(key, 'object') as V;
-			this.position += struct.length(value, ...args!);
+			this.position = struct.length(value, this.position, args!);
 			return value;
 		}
 
 		const values = this.#get_array_value(key, length) as V[];
 		for (let i=0; i<length; i++) {
-			this.position += struct.length(values[i], ...args!);
+			this.position = struct.length(values[i], this.position, args!);
 		}
 		return values;
 	}
@@ -225,6 +225,6 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 	}
 
 	custom(opts: CustomOptions<I>) {
-		opts.length(this);
+		return opts.length(this);
 	}
 }

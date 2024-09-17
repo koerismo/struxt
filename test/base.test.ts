@@ -99,9 +99,9 @@ describe('Mode base tests', () => {
 
 	it('Length mode', () => {
 		let length!: number;
-		assert.doesNotThrow(() => {length = struct.length(input, 'LE')});
+		assert.doesNotThrow(() => {length = struct.length(input, ['LE'])});
 		assert.strictEqual(length, 116);
-		assert.doesNotThrow(() => {length = struct.length(input, 'BE')});
+		assert.doesNotThrow(() => {length = struct.length(input, ['BE'])});
 		assert.strictEqual(length, 116);
 	});
 
