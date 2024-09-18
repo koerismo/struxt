@@ -49,7 +49,7 @@ export class Struct<I extends Unpacked = Unpacked, A extends any[] = any[]> {
 	pack(source: I, target: ArrayBuffer, args: A): number;
 	pack(source: I, target: ArrayBuffer, offset: number, args: A): number;
 	pack(source: I, target: ArrayBuffer, offset: number, args: A): number;
-	pack(source: I, target: ArrayBuffer, offset: number, length: number, args: A): number;
+	pack(source: I, target: ArrayBuffer, offset: number, length: number, args: A, enable_sort?: boolean): number;
 	pack(source: I, target: ArrayBuffer, offset?: number|A, length?: number|A, args?: A, enable_sort?: boolean): number {
 		if (Array.isArray(length)) args = <A><unknown>length, length = undefined;
 		if (Array.isArray(offset)) args = <A><unknown>offset, offset = undefined, length = undefined;

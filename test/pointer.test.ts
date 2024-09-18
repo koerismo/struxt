@@ -117,6 +117,6 @@ describe('Defers & pointers', () => {
 		});
 
 		const outbuf = new ArrayBuffer(2*2*3);
-		struct.pack({}, outbuf);
+		struct.pack({}, outbuf, 0, outbuf.byteLength, [], true);
 	});
 });
