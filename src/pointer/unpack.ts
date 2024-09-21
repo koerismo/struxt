@@ -250,7 +250,7 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		return ref;
 	}
 
-	pointer(type: 'i16' | 'i32', relative: boolean=true, offset: number=0, _priority?: number): (func: (ctx: Pointer<I>) => void) => void {
+	pointer(type: 'i16' | 'i32', relative: boolean=true, offset: number=0, _density?: number): (func: (ctx: Pointer<I>) => void) => void {
 		const is_u16 = type === 'i16';
 		if (relative) offset += this.start;
 		let start = this.context.view[is_u16 ? 'getInt16' : 'getInt32'](this.position, this.little) + offset;

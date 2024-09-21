@@ -251,7 +251,7 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 		return ref;
 	}
 
-	pointer(type: 'i16' | 'i32', relative: boolean=true, offset: number=0, priority: number=0): (func: (ctx: Pointer<I>) => void) => void {
+	pointer(type: 'i16' | 'i32', relative: boolean=true, offset: number=0, density: number=0): (func: (ctx: Pointer<I>) => void) => void {
 		const is_u16 = type === 'i16';
 		if (relative) offset += this.start;
 		const origin = this.position;
@@ -270,30 +270,40 @@ export class PackPointer<I extends Unpacked = Unpacked> extends SharedPointer im
 				return this.position;
 			}) as Resolvable;
 
-			resolve.level = this.level;
-			resolve.priority = priority;
+			resolve.level = this.level + Math.max(0, density);
+			resolve.resolved = false;
 			this.context.pointers.push(resolve);
 		}
 	}
 
 	/** @internal Forcefully resolves all current pointers. DO NOT CALL THIS UNLESS YOU KNOW WHAT YOU ARE DOING! */
-	__resolve__(enable_sort: boolean) {
+	__resolve__() {
 		const pointers = this.context.pointers;
 
-		let level = this.level, hits = 0;
+		let level = 0, next_level = this.level, hits = 0;
 		let offset = this.position;
-		while (true) {
-			// TODO: Find a way to reduce the number of sorts or do this in a less expensive way?
-			if (enable_sort) pointers.sort((a, b) => b.priority - a.priority);
 
+		while (true) {
 			hits = 0;
+
+			level = next_level;
+			next_level = Infinity;
 			for (let i=0; i<pointers.length; i++) {
-				if (pointers[i].level !== level) continue;
-				offset = pointers[i](offset);
+				const p = pointers[i];
+				if (p.resolved) continue;
+				
+				// Try to find the lowest next level - sometimes levels aren't continuous!
+				if (p.level < next_level && p.level > level) next_level = p.level;
+				if (p.level > level) continue;
+
+				// Run the pointer and mark it as executed.
+				offset = p(offset);
+				p.resolved = true;
 				hits ++;
 			}
+			
+			// If we executed 0 things last round, chances are we're done.
 			if (hits === 0) break;
-			level ++;
 		}
 	}
 

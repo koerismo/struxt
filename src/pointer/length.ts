@@ -216,7 +216,7 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		return ref;
 	}
 
-	pointer(type: 'i16' | 'i32', relative: boolean=true, offset: number=0, _priority?: number): (func: (ctx: Pointer<I>) => void) => void {
+	pointer(type: 'i16' | 'i32', relative: boolean=true, offset: number=0, density?: number): (func: (ctx: Pointer<I>) => void) => void {
 		this.position += type === 'i16' ? 2 : 4;
 
 		return (func) => {

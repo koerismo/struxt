@@ -12,9 +12,10 @@ function Literal<T>(value: T, assert=true): LiteralType<T> {
  * Note: If a low-priority struct contains a high-priority pointer,
  * the pointer will still be written after its parent!
  * */
-export enum Priority {
-	HIGH = 1,
-	LOW = -1,
+export enum Density {
+	NONE = 0,
+	LOW = 500,
+	HIGH = 1000,
 }
 
 export default Struct;
