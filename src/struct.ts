@@ -17,10 +17,10 @@ export function create_context(name: string, buffer: ArrayBuffer, object: Unpack
 }
 
 export class Struct<I extends Unpacked = Unpacked, A extends any[] = any[]> {
-	/** @internal Stores the exec function provided in the constructor. Do not call directly! */
-	__exec__: ExecFunction<I, A>;
-	/** @internal Stores the object constructor used when unpack pointers call Pointer.struct with this struct. */
-	__type__: () => object;
+	/** @private Stores the exec function provided in the constructor. Do not call directly! */
+	readonly __exec__: ExecFunction<I, A>;
+	/** @private Stores the object constructor used when unpack pointers call Pointer.struct with this struct. */
+	readonly __type__: () => object;
 	/** The struct name, used for tracking errors. */
 	readonly name: string;
 
@@ -32,8 +32,8 @@ export class Struct<I extends Unpacked = Unpacked, A extends any[] = any[]> {
 
 	/** Dry-runs a struct pack operation and returns the new pointer position. */
 	length(source: I): number;
-	length(source: I, args: A): number;
-	length(source: I, offset: number, args: A): number;
+	length(source: I, args?: A): number;
+	length(source: I, offset: number, args?: A): number;
 	length(source: I, offset?: number|A, args?: A): number {
 		if (Array.isArray(offset)) args = <A><unknown>offset, offset = 0;
 		args ??= <A><unknown>[];
@@ -46,9 +46,9 @@ export class Struct<I extends Unpacked = Unpacked, A extends any[] = any[]> {
 
 	/** Packs the struct into the specified buffer, returning the new absolute pointer position. */
 	pack(source: I, target: ArrayBuffer): number;
-	pack(source: I, target: ArrayBuffer, args: A): number;
-	pack(source: I, target: ArrayBuffer, offset: number, args: A): number;
-	pack(source: I, target: ArrayBuffer, offset: number, length: number, args: A): number;
+	pack(source: I, target: ArrayBuffer, args?: A): number;
+	pack(source: I, target: ArrayBuffer, offset: number, args?: A): number;
+	pack(source: I, target: ArrayBuffer, offset: number, length: number, args?: A): number;
 	pack(source: I, target: ArrayBuffer, offset?: number|A, length?: number|A, args?: A): number {
 		if (Array.isArray(length)) args = <A><unknown>length, length = undefined;
 		if (Array.isArray(offset)) args = <A><unknown>offset, offset = undefined, length = undefined;
@@ -66,9 +66,9 @@ export class Struct<I extends Unpacked = Unpacked, A extends any[] = any[]> {
 
 	/** Unpacks the struct from the specified buffer, returning the new absolute pointer position. */
 	unpack(source: ArrayBuffer, target: Partial<I>): number;
-	unpack(source: ArrayBuffer, target: Partial<I>, args: A): number;
-	unpack(source: ArrayBuffer, target: Partial<I>, offset: number, args: A): number;
-	unpack(source: ArrayBuffer, target: Partial<I>, offset: number, length: number, args: A): number;
+	unpack(source: ArrayBuffer, target: Partial<I>, args?: A): number;
+	unpack(source: ArrayBuffer, target: Partial<I>, offset: number, args?: A): number;
+	unpack(source: ArrayBuffer, target: Partial<I>, offset: number, length: number, args?: A): number;
 	unpack(source: ArrayBuffer, target: Partial<I>, offset?: number|A, length?: number|A, args?: A): number {
 		if (Array.isArray(length)) args = <A><unknown>length, length = undefined;
 		if (Array.isArray(offset)) args = <A><unknown>offset, offset = undefined, length = undefined;
