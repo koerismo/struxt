@@ -148,6 +148,20 @@ export class LengthPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		return value;
 	}
 
+	f16(key: SKey<I, number>): number;
+	f16(key: AKey<I, number>, length: number): Float16Array;
+	f16(key: Key<I, number>, length?: number): number | Float16Array {
+		if (length === undefined) {
+			const value = this.#get_single_value(<key>key, 'number');
+			this.position += 2;
+			return value;
+		}
+
+		const value = new Float16Array(this.#get_array_value(<key>key, length));
+		this.position += length * 2;
+		return value;
+	}
+
 	f32(key: SKey<I, number>): number;
 	f32(key: AKey<I, number>, length: number): Float32Array;
 	f32(key: Key<I, number>, length?: number): number | Float32Array {

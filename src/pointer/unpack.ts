@@ -162,6 +162,24 @@ export class UnpackPointer<I extends Unpacked = Unpacked> extends SharedPointer 
 		return arr;
 	}
 
+	f16(key: SKey<I, number>): number;
+	f16(key: AKey<I, number>, length: number): Float16Array;
+	f16(key: Key<I, number>, length?: number | undefined): number | Float16Array {
+		if (length === undefined) {
+			const value = this.context.view.getFloat16(this.position, this.little);
+			this.#set_value(key, value);
+			this.position += 2;
+			return value;
+		}
+
+		const start = this.position;
+		this.position += length * 2;
+		const arr = new Float16Array(length);
+		for ( let i=0; i<length; i++ ) arr[i] = this.context.view.getFloat16(start + i*2, this.little);
+		this.#set_value(key, arr);
+		return arr;
+	}
+
 	f32(key: SKey<I, number>): number;
 	f32(key: AKey<I, number>, length: number): Float32Array;
 	f32(key: Key<I, number>, length?: number | undefined): number | Float32Array {

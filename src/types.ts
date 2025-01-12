@@ -1,5 +1,20 @@
 import type { Struct } from './struct.js';
 
+// Until float16 becomes standardized, we have to insert
+// these types to allow this package to compile.
+/** @internal */
+declare global {
+	type Float16Array = Float32Array;
+	const Float16Array: Float32ArrayConstructor;
+	interface Math {
+		f16round(value: number): number;
+	}
+	interface DataView {
+		setFloat16(byteOffset: number, value: number, littleEndian?: boolean): number;
+		getFloat16(byteOffset: number, littleEndian?: boolean): number;
+	}
+}
+
 type KeysMatching<I, T> = {[K in keyof I]: I[K] extends T ? K : never}[keyof I];
 
 export interface CustomOptions<I extends Unpacked> {
@@ -93,10 +108,9 @@ export declare interface Pointer<I extends Unpacked = Unpacked> {
 
 	// Float
 
-	// Wait for the ECMA proposal to go through...
-	// f16(key: SKey<I, number>): number;
-	// f16(key: AKey<I, number>, length: number): Float16Array;
-	// f16(key: Key<I, number>, length?: number): number| Float16Array;
+	f16(key: SKey<I, number>): number;
+	f16(key: AKey<I, number>, length: number): Float16Array;
+	f16(key: Key<I, number>, length?: number): number| Float16Array;
 
 	f32(key: SKey<I, number>): number;
 	f32(key: AKey<I, number>, length: number): Float32Array;
